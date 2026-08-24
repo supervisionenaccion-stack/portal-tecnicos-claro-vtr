@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Técnicos · Claro/VTR</title>
+<meta name="theme-color" content="#003c71">
+<style>
+  :root{
+    --bg:#eef1f4; --panel:#ffffff; --panel-2:#f5f7f9; --border:#e0e5ea; --text:#22303f; --text-dim:#6b7a8c;
+    --cobra-navy:#003c71; --cobra-blue:#0071ce; --celeste:#29a9e0; --celeste-soft:#e8f6fd;
+    --ok:#1fa971; --ok-bg:#e2f6ee; --warn:#e2962e; --warn-bg:#fdf1e2; --bad:#e2523e; --bad-bg:#fce4e0;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; font-family:'Segoe UI', Arial, sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+  header.hero{
+    background:linear-gradient(120deg,#ffffff 0%,var(--celeste-soft) 55%,#dcf1fb 100%);
+    padding:34px 6vw 40px; position:relative; overflow:hidden; border-bottom:4px solid var(--celeste);
+  }
+  header.hero::after{
+    content:""; position:absolute; right:-100px; top:-100px; width:340px; height:340px; border-radius:50%;
+    background:radial-gradient(circle, rgba(41,169,224,0.18), transparent 70%);
+  }
+  .brand-row{ display:flex; align-items:center; gap:18px; margin-bottom:22px; }
+  .brand-row img{ height:46px; }
+  .brand-divider{ width:1px; height:34px; background:var(--border); }
+  .eyebrow{ text-transform:uppercase; letter-spacing:.14em; font-size:12.5px; color:var(--celeste); font-weight:800; }
+  h1{ margin:0 0 6px; font-size:clamp(24px,4vw,34px); font-weight:800; letter-spacing:-0.01em; color:var(--cobra-navy); }
+  .subtitle{ color:#3a4a5c; font-size:14.5px; max-width:640px; line-height:1.55; }
+  main{ padding:36px 6vw 80px; max-width:760px; margin:0 auto; }
+  .panel{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:0 4px 14px rgba(20,50,80,.05); }
+
+  #loginBox{ max-width:400px; margin:40px auto 0; text-align:center; }
+  #loginBox .icono-login{ font-size:38px; margin-bottom:6px; }
+  #loginBox h2{ margin:0 0 8px; font-size:20px; color:var(--cobra-navy); }
+  #loginBox p.desc{ margin:0 0 22px; font-size:13.5px; color:var(--text-dim); line-height:1.6; }
+  .campo{ margin-bottom:14px; text-align:left; }
+  .campo label{ display:block; font-size:12px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
+  .campo input{ width:100%; padding:12px 13px; border:1px solid var(--border); border-radius:8px; font-size:16px; font-family:inherit; }
+  .campo input:focus{ outline:2px solid var(--celeste); border-color:var(--celeste); }
+  .campo .ayuda{ font-size:11.5px; color:var(--text-dim); margin-top:4px; text-align:left; }
+  #loginBtn{ width:100%; padding:13px; border:none; border-radius:8px; background:var(--cobra-navy); color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:8px; }
+  #loginBtn:hover{ background:var(--cobra-blue); }
+  #loginError{ display:none; background:var(--bad-bg); color:var(--bad); border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:14px; text-align:left; }
+
+  #appBox{ display:none; }
+  .top-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:4px; }
+  #logoutBtn{ background:none; border:1px solid var(--border); color:var(--cobra-navy); padding:8px 14px; border-radius:20px; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  #logoutBtn:hover{ background:var(--panel-2); }
+  .intro-personal{ font-size:14px; color:var(--text-dim); line-height:1.6; margin:4px 0 22px; }
+
+  .resumen-general{ display:flex; align-items:center; gap:16px; padding:20px 22px; border-radius:14px; margin-bottom:24px; border:1px solid var(--border); }
+  .resumen-general.ok{ background:var(--ok-bg); border-color:rgba(31,169,113,.3); }
+  .resumen-general.warn{ background:var(--warn-bg); border-color:rgba(226,150,46,.3); }
+  .resumen-general.bad{ background:var(--bad-bg); border-color:rgba(226,82,62,.3); }
+  .resumen-general .emoji{ font-size:34px; flex-shrink:0; }
+  .resumen-general .texto b{ display:block; font-size:16px; margin-bottom:2px; }
+  .resumen-general.ok .texto b{ color:var(--ok); }
+  .resumen-general.warn .texto b{ color:var(--warn); }
+  .resumen-general.bad .texto b{ color:var(--bad); }
+  .resumen-general .texto span{ font-size:13px; color:var(--text-dim); }
+
+  .report-card{ margin-bottom:22px; }
+  .report-card .cabecera{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+  .report-card .cabecera .icono{ font-size:22px; }
+  .report-card .cabecera h2{ font-size:17px; color:var(--cobra-navy); margin:0; }
+  .report-card .explica{ font-size:13px; color:var(--text-dim); margin:0 0 16px; line-height:1.55; }
+  .estado-pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 13px; border-radius:20px; font-size:13px; font-weight:700; margin-bottom:14px; }
+  .estado-pill.ok{ background:var(--ok-bg); color:var(--ok); }
+  .estado-pill.warn{ background:var(--warn-bg); color:var(--warn); }
+  .estado-pill.bad{ background:var(--bad-bg); color:var(--bad); }
+
+  .barra-wrap{ margin:10px 0 16px; }
+  .barra-track{ position:relative; height:22px; background:var(--panel-2); border-radius:11px; overflow:visible; }
+  .barra-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:11px; display:flex; align-items:center; justify-content:flex-end; padding-right:10px; min-width:34px; }
+  .barra-fill span{ font-size:11.5px; font-weight:800; color:#fff; white-space:nowrap; }
+  .barra-fill.ok{ background:var(--ok); }
+  .barra-fill.warn{ background:var(--warn); }
+  .barra-fill.bad{ background:var(--bad); }
+
+  .frase-clave{ font-size:14.5px; line-height:1.6; margin:0 0 14px; }
+  .frase-clave b{ color:var(--cobra-navy); }
+
+  .detalle-toggle{ font-size:12.5px; color:var(--celeste); font-weight:700; cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:4px; margin-top:6px; }
+  .detalle-body{ display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--panel-2); }
+  .detalle-body.abierto{ display:block; }
+  .fila-dato{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:13px; }
+  .fila-dato .k{ color:var(--text-dim); }
+  .fila-dato .v{ font-weight:700; color:var(--text); text-align:right; }
+
+  .callout{ border-left:3px solid var(--celeste); background:linear-gradient(90deg, var(--celeste-soft), transparent); padding:12px 16px; border-radius:0 10px 10px 0; font-size:13px; color:#2c3e50; line-height:1.55; margin-top:14px; }
+  .sin-datos{ color:var(--text-dim); font-size:13.5px; font-style:italic; }
+  footer{ text-align:center; padding:26px; color:var(--text-dim); font-size:11.5px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="brand-row">
+    <img src="logo-cobra.png" alt="Cobra">
+    <div class="brand-divider"></div>
+    <div class="eyebrow">Portal de Técnicos</div>
+  </div>
+  <h1>Mis Indicadores</h1>
+  <div class="subtitle">Acá puedes ver, de forma simple, cómo te va este mes en Claro/VTR y en qué puedes enfocarte para mejorar.</div>
+</header>
+
+<main>
+  <div id="loginBox" class="panel">
+    <div class="icono-login">👋</div>
+    <h2>Bienvenido</h2>
+    <p class="desc">Ingresa con tu ID CAT para ver tu reporte personal. Nadie más puede ver tu información.</p>
+    <div id="loginError"></div>
+    <div class="campo">
+      <label for="inputNombre">ID CAT</label>
+      <input type="text" id="inputNombre" placeholder="Ej: 123456" autocomplete="username" inputmode="numeric" maxlength="6">
+      <div class="ayuda">Son los últimos 6 caracteres de tu RUT, incluido el dígito verificador (si termina en K, usa 0).</div>
+    </div>
+    <button id="loginBtn">Ver mi reporte</button>
+  </div>
+
+  <div id="appBox">
+    <div class="top-row">
+      <div>
+        <h1 id="saludo" style="font-size:22px;margin-bottom:2px;"></h1>
+        <div class="subtitle" id="datosTecnico" style="font-size:13px;"></div>
+      </div>
+      <button id="logoutBtn">Cerrar sesión</button>
+    </div>
+    <p class="intro-personal">Este es tu reporte personal. Te mostramos cómo vas este mes con tus órdenes de trabajo, y en qué puedes enfocarte para mejorar.</p>
+
+    <div id="resumenGeneral"></div>
+
+    <div class="report-card panel" id="seccionCalidad"></div>
+    <div class="report-card panel" id="seccionDerivaciones"></div>
+    <div class="report-card panel" id="seccionRgu"></div>
+  </div>
+</main>
+
+<footer id="footerText"></footer>
+
+<script>
+const DATA = {"generadoEl":"24-08-2026, 4:24:08 p. m.","periodoCalidad":"julio de 2026","periodoMatriz":"1 al 22 de agosto de 2026","tecnicos":{"117810":{"nombre":"CRISTIAN STEVE GONZALEZ NAVARRO","supervisor":"PATRICIO ANDRES ARIAS BENITO","agencia":"ARICA","calidad":{"totalOrdenes":72,"repetidos30Dias":4,"pctRepetidos":5.555555555555555,"metaCalidad":4.76},"derivaciones":{"qOrdenes":54,"qDerivaciones":19,"pctDerivaciones":35.18518518518518},"rgu":{"rguTotal":104,"rguCompletadaGsa":69.5,"diasConGsa":18,"metaDiaria":4.3,"metaPeriodo":77.39999999999999,"pctCumplimiento":89.79328165374679}},"123154":{"nombre":"ANDRES EDUARDO RODRIGUEZ BERMEDO","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":73,"repetidos30Dias":5,"pctRepetidos":6.8493150684931505,"metaCalidad":5.62},"derivaciones":{"qOrdenes":41,"qDerivaciones":11,"pctDerivaciones":26.82926829268293},"rgu":{"rguTotal":98.5,"rguCompletadaGsa":67,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":98.52941176470588}},"129497":{"nombre":"SEBASTIAN SANTANA URRUTIA","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":46,"repetidos30Dias":5,"pctRepetidos":10.869565217391305,"metaCalidad":5.62},"derivaciones":null,"rgu":null},"147863":{"nombre":"JOSE LUIS CHOQUE BLANCO","supervisor":"PATRICIO ANDRES ARIAS BENITO","agencia":"ARICA","calidad":{"totalOrdenes":49,"repetidos30Dias":4,"pctRepetidos":8.16326530612245,"metaCalidad":4.76},"derivaciones":null,"rgu":null},"157699":{"nombre":"RODRIGO ALONSO GONZALEZ SANTIBAÑEZ","supervisor":"PATRICIO ANDRES ARIAS BENITO","agencia":"ARICA","calidad":{"totalOrdenes":32,"repetidos30Dias":2,"pctRepetidos":6.25,"metaCalidad":4.76},"derivaciones":{"qOrdenes":43,"qDerivaciones":20,"pctDerivaciones":46.51162790697674},"rgu":{"rguTotal":93.75,"rguCompletadaGsa":51.25,"diasConGsa":16,"metaDiaria":4.3,"metaPeriodo":68.8,"pctCumplimiento":74.49127906976744}},"166049":{"nombre":"XAVIER NATERA MARTINEZ","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":59,"repetidos30Dias":3,"pctRepetidos":5.084745762711865,"metaCalidad":5.62},"derivaciones":{"qOrdenes":29,"qDerivaciones":14,"pctDerivaciones":48.275862068965516},"rgu":{"rguTotal":97.75,"rguCompletadaGsa":52.5,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":77.20588235294117}},"192378":{"nombre":"CRISTOPHER CARDENAS MONFIL","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":70,"repetidos30Dias":3,"pctRepetidos":4.285714285714286,"metaCalidad":5.56},"derivaciones":{"qOrdenes":50,"qDerivaciones":16,"pctDerivaciones":32},"rgu":{"rguTotal":129.75,"rguCompletadaGsa":95.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":132.29166666666669}},"193084":{"nombre":"BENJAMIN ALEJANDRO PEREZ POVEDA","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":46,"repetidos30Dias":3,"pctRepetidos":6.521739130434782,"metaCalidad":5.62},"derivaciones":{"qOrdenes":27,"qDerivaciones":13,"pctDerivaciones":48.148148148148145},"rgu":{"rguTotal":71.75,"rguCompletadaGsa":46.5,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":68.38235294117648}},"193434":{"nombre":"ANIBAL EDUARDO BERROCAL BAHAMONDE","supervisor":"PATRICIO ANDRES ARIAS BENITO","agencia":"ARICA","calidad":{"totalOrdenes":73,"repetidos30Dias":6,"pctRepetidos":8.21917808219178,"metaCalidad":4.76},"derivaciones":{"qOrdenes":45,"qDerivaciones":19,"pctDerivaciones":42.22222222222222},"rgu":{"rguTotal":92.75,"rguCompletadaGsa":65,"diasConGsa":15,"metaDiaria":4.3,"metaPeriodo":64.5,"pctCumplimiento":100.7751937984496}},"212602":{"nombre":"PAULA ANDREA RODRIGUEZ BAEZ","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":55,"repetidos30Dias":2,"pctRepetidos":3.6363636363636362,"metaCalidad":5.62},"derivaciones":{"qOrdenes":66,"qDerivaciones":33,"pctDerivaciones":50},"rgu":{"rguTotal":132.25,"rguCompletadaGsa":79.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":110.06944444444444}},"219355":{"nombre":"MIGUEL ALBERTO ARACENA VERGARA","supervisor":"PATRICIO ANDRES ARIAS BENITO","agencia":"ARICA","calidad":{"totalOrdenes":84,"repetidos30Dias":8,"pctRepetidos":9.523809523809524,"metaCalidad":4.76},"derivaciones":{"qOrdenes":69,"qDerivaciones":30,"pctDerivaciones":43.47826086956522},"rgu":{"rguTotal":147.25,"rguCompletadaGsa":94.5,"diasConGsa":18,"metaDiaria":4.3,"metaPeriodo":77.39999999999999,"pctCumplimiento":122.09302325581397}},"253659":{"nombre":"JOSE LUIS BURGOS LAGOS","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":61,"repetidos30Dias":0,"pctRepetidos":0,"metaCalidad":5.62},"derivaciones":{"qOrdenes":33,"qDerivaciones":11,"pctDerivaciones":33.33333333333333},"rgu":{"rguTotal":92.25,"rguCompletadaGsa":63.5,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":88.19444444444444}},"281589":{"nombre":"BRAULIO DANILO DIAZ CORNEJO","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":43,"repetidos30Dias":4,"pctRepetidos":9.30232558139535,"metaCalidad":5.56},"derivaciones":{"qOrdenes":23,"qDerivaciones":8,"pctDerivaciones":34.78260869565217},"rgu":{"rguTotal":74.25,"rguCompletadaGsa":53.25,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":88.75}},"296367":{"nombre":"LUIS ROBERTO BAIGORRIA CORDOVA","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":41,"repetidos30Dias":5,"pctRepetidos":12.195121951219512,"metaCalidad":5.56},"derivaciones":{"qOrdenes":25,"qDerivaciones":12,"pctDerivaciones":48},"rgu":{"rguTotal":74.25,"rguCompletadaGsa":49.25,"diasConGsa":13,"metaDiaria":4,"metaPeriodo":52,"pctCumplimiento":94.71153846153845}},"312665":{"nombre":"ALVARO IVAN HERRERA SALINAS","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":41,"repetidos30Dias":5,"pctRepetidos":12.195121951219512,"metaCalidad":5.62},"derivaciones":{"qOrdenes":33,"qDerivaciones":14,"pctDerivaciones":42.42424242424242},"rgu":{"rguTotal":78.5,"rguCompletadaGsa":48,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":66.66666666666666}},"354941":{"nombre":"TOMAS SEBASTIAN PONCE ARANCIBIA","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":77,"repetidos30Dias":4,"pctRepetidos":5.194805194805195,"metaCalidad":5.56},"derivaciones":{"qOrdenes":55,"qDerivaciones":21,"pctDerivaciones":38.18181818181819},"rgu":{"rguTotal":139.75,"rguCompletadaGsa":93.75,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":130.20833333333331}},"371588":{"nombre":"HERNAN TOMAS MARIN ORELLANA","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":25,"repetidos30Dias":7,"pctRepetidos":28.000000000000004,"metaCalidad":5.56},"derivaciones":{"qOrdenes":30,"qDerivaciones":18,"pctDerivaciones":60},"rgu":{"rguTotal":70.75,"rguCompletadaGsa":31,"diasConGsa":10,"metaDiaria":4,"metaPeriodo":40,"pctCumplimiento":77.5}},"378229":{"nombre":"VICTOR HUGO HUAMANI .","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":68,"repetidos30Dias":5,"pctRepetidos":7.352941176470589,"metaCalidad":5.62},"derivaciones":{"qOrdenes":26,"qDerivaciones":13,"pctDerivaciones":50},"rgu":{"rguTotal":84.25,"rguCompletadaGsa":51.75,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":76.10294117647058}},"440348":{"nombre":"MARCO ALEXANDER BENITEZ FERNANDEZ","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":58,"repetidos30Dias":3,"pctRepetidos":5.172413793103448,"metaCalidad":5.62},"derivaciones":{"qOrdenes":47,"qDerivaciones":16,"pctDerivaciones":34.04255319148936},"rgu":{"rguTotal":93,"rguCompletadaGsa":56.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":78.125}},"462254":{"nombre":"MARCELO SEBASTIAN VASQUEZ SAEZ","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":31,"repetidos30Dias":2,"pctRepetidos":6.451612903225806,"metaCalidad":5.62},"derivaciones":null,"rgu":null},"479496":{"nombre":"ENZO ANDRES CASTILLO GONZALEZ","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":60,"repetidos30Dias":7,"pctRepetidos":11.666666666666666,"metaCalidad":5.62},"derivaciones":{"qOrdenes":5,"qDerivaciones":3,"pctDerivaciones":60},"rgu":{"rguTotal":13.25,"rguCompletadaGsa":7.25,"diasConGsa":4,"metaDiaria":4,"metaPeriodo":16,"pctCumplimiento":45.3125}},"522067":{"nombre":"JONATHAN DIAZ CALDERON","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":51,"repetidos30Dias":2,"pctRepetidos":3.9215686274509802,"metaCalidad":5.62},"derivaciones":{"qOrdenes":25,"qDerivaciones":11,"pctDerivaciones":44},"rgu":{"rguTotal":79,"rguCompletadaGsa":46.5,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":64.58333333333334}},"575124":{"nombre":"HECTOR REYES OLMOS","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":72,"repetidos30Dias":7,"pctRepetidos":9.722222222222223,"metaCalidad":5.56},"derivaciones":{"qOrdenes":54,"qDerivaciones":22,"pctDerivaciones":40.74074074074074},"rgu":{"rguTotal":127,"rguCompletadaGsa":88.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":122.56944444444444}},"582282":{"nombre":"LUIS ROBERTO QUIROGA SEGUEL","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":47,"repetidos30Dias":8,"pctRepetidos":17.02127659574468,"metaCalidad":5.62},"derivaciones":{"qOrdenes":35,"qDerivaciones":15,"pctDerivaciones":42.857142857142854},"rgu":{"rguTotal":77,"rguCompletadaGsa":45.75,"diasConGsa":13,"metaDiaria":4,"metaPeriodo":52,"pctCumplimiento":87.98076923076923}},"631633":{"nombre":"JORGE LUIS REYES TOLOZA","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":40,"repetidos30Dias":2,"pctRepetidos":5,"metaCalidad":5.62},"derivaciones":{"qOrdenes":32,"qDerivaciones":18,"pctDerivaciones":56.25},"rgu":{"rguTotal":70.75,"rguCompletadaGsa":29.5,"diasConGsa":16,"metaDiaria":4,"metaPeriodo":64,"pctCumplimiento":46.09375}},"636897":{"nombre":"MIGUEL LEMUS RIVERA","supervisor":"DANILO ENRIQUE OJEDA MINO","agencia":"SANTIAGO","calidad":{"totalOrdenes":46,"repetidos30Dias":4,"pctRepetidos":8.695652173913043,"metaCalidad":5.62},"derivaciones":null,"rgu":null},"736204":{"nombre":"CARLOS NICOLAS PLAZA LEIVA","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":66,"repetidos30Dias":2,"pctRepetidos":3.0303030303030303,"metaCalidad":5.56},"derivaciones":{"qOrdenes":40,"qDerivaciones":14,"pctDerivaciones":35},"rgu":{"rguTotal":111,"rguCompletadaGsa":79.75,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":117.27941176470588}},"797341":{"nombre":"PEDRO CRISTOBAL PINTO CASTILLO","supervisor":"PATRICIO ANDRES ARIAS BENITO","agencia":"ARICA","calidad":{"totalOrdenes":83,"repetidos30Dias":6,"pctRepetidos":7.228915662650602,"metaCalidad":4.76},"derivaciones":{"qOrdenes":54,"qDerivaciones":19,"pctDerivaciones":35.18518518518518},"rgu":{"rguTotal":109.5,"rguCompletadaGsa":68.5,"diasConGsa":17,"metaDiaria":4.3,"metaPeriodo":73.1,"pctCumplimiento":93.70725034199727}},"844087":{"nombre":"EUDIS JESUS ALDAMA MARIN","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":67,"repetidos30Dias":4,"pctRepetidos":5.970149253731343,"metaCalidad":5.62},"derivaciones":{"qOrdenes":55,"qDerivaciones":27,"pctDerivaciones":49.09090909090909},"rgu":{"rguTotal":103,"rguCompletadaGsa":65.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":90.625}},"844778":{"nombre":"HECTOR SANTIS MEZA","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":null,"derivaciones":{"qOrdenes":38,"qDerivaciones":13,"pctDerivaciones":34.21052631578947},"rgu":{"rguTotal":69,"rguCompletadaGsa":43.25,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":72.08333333333333}},"882963":{"nombre":"FERNANDO ALEXIS SANCHEZ ZAMORA","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":50,"repetidos30Dias":7,"pctRepetidos":14.000000000000002,"metaCalidad":5.56},"derivaciones":{"qOrdenes":26,"qDerivaciones":9,"pctDerivaciones":34.61538461538461},"rgu":{"rguTotal":79,"rguCompletadaGsa":59.25,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":87.13235294117648}},"916530":{"nombre":"ALEJANDRO ADRIAN ALMAZABAL TORO","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":41,"repetidos30Dias":6,"pctRepetidos":14.634146341463413,"metaCalidad":5.56},"derivaciones":{"qOrdenes":45,"qDerivaciones":18,"pctDerivaciones":40},"rgu":{"rguTotal":119.75,"rguCompletadaGsa":81.75,"diasConGsa":16,"metaDiaria":4,"metaPeriodo":64,"pctCumplimiento":127.734375}},"972449":{"nombre":"PATRICIO ALBERTO FIGUEROA MURA","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":28,"repetidos30Dias":1,"pctRepetidos":3.571428571428571,"metaCalidad":5.56},"derivaciones":null,"rgu":null},"998513":{"nombre":"ANGELA GABRIELA REYES ALVAREZ","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","agencia":"SANTIAGO","calidad":{"totalOrdenes":26,"repetidos30Dias":3,"pctRepetidos":11.538461538461538,"metaCalidad":5.62},"derivaciones":null,"rgu":null},"092049":{"nombre":"ELADIO ANDRES GUERRERO LEIVA","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":62,"repetidos30Dias":4,"pctRepetidos":6.451612903225806,"metaCalidad":5.56},"derivaciones":{"qOrdenes":51,"qDerivaciones":19,"pctDerivaciones":37.254901960784316},"rgu":{"rguTotal":131.25,"rguCompletadaGsa":94,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":138.23529411764704}},"083580":{"nombre":"JUAN PABLO CACERES SOBARZO","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","agencia":"V REGION","calidad":{"totalOrdenes":38,"repetidos30Dias":7,"pctRepetidos":18.421052631578945,"metaCalidad":5.56},"derivaciones":{"qOrdenes":24,"qDerivaciones":9,"pctDerivaciones":37.5},"rgu":{"rguTotal":83.5,"rguCompletadaGsa":54.75,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":91.25}},"014468":{"nombre":"DARIO GUSTAVO CHAMBE ALCON","supervisor":"PATRICIO ANDRES ARIAS BENITO","agencia":"ARICA","calidad":{"totalOrdenes":54,"repetidos30Dias":4,"pctRepetidos":7.4074074074074066,"metaCalidad":4.76},"derivaciones":{"qOrdenes":40,"qDerivaciones":13,"pctDerivaciones":32.5},"rgu":{"rguTotal":93.5,"rguCompletadaGsa":69,"diasConGsa":17,"metaDiaria":4.3,"metaPeriodo":73.1,"pctCumplimiento":94.39124487004105}}}};
+
+function titleCase(s) { return (s || '').split(' ').map(w => w ? w[0] + w.slice(1).toLowerCase() : w).join(' '); }
+
+document.getElementById('footerText').innerHTML =
+  'Calidad: ' + DATA.periodoCalidad + ' (mes completo) · Derivaciones/RGU: ' + DATA.periodoMatriz + ' (avance del mes) · Generado ' + DATA.generadoEl;
+
+// Meta oficial de Derivaciones (Alta/Migracion): no superar 35%.
+const META_DERIVACIONES = 35;
+
+// goodWhenLow=true: mientras mas bajo el % mejor (Calidad, Derivaciones).
+// goodWhenLow=false: mientras mas alto el % mejor (RGU Completada GSA).
+function estado(pct, goodWhenLow, umbralOk, umbralWarn) {
+  const cumpleOk = goodWhenLow ? pct <= umbralOk : pct >= umbralOk;
+  const cumpleWarn = goodWhenLow ? pct <= umbralWarn : pct >= umbralWarn;
+  if (cumpleOk) return { emoji: '✅', texto: 'Buen desempeño', clase: 'ok' };
+  if (cumpleWarn) return { emoji: '⚠️', texto: 'Atención', clase: 'warn' };
+  return { emoji: '🔴', texto: 'Foco prioritario', clase: 'bad' };
+}
+
+function barra(pct, cls) {
+  const ancho = Math.max(0, Math.min(100, pct));
+  return '<div class="barra-wrap"><div class="barra-track">'
+    + '<div class="barra-fill ' + cls + '" style="width:' + ancho.toFixed(1) + '%"><span>' + pct.toFixed(1) + '%</span></div>'
+    + '</div></div>';
+}
+
+let contadorDetalle = 0;
+
+function bloqueCalidad(datos) {
+  const icono = '🔁', titulo = 'Calidad (repetidos 30 días)';
+  const explicacion = 'Mide si una orden tuya vuelve a repetirse antes de 30 días. Mientras más bajo, mejor. Se calcula con el mes anterior completo (' + DATA.periodoCalidad + ') porque el indicador necesita ese tiempo para madurar.';
+  if (!datos) {
+    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+      + '<p class="explica">' + explicacion + '</p>'
+      + '<p class="sin-datos">No hay órdenes registradas para ti en este período.</p>';
+  }
+  const meta = datos.metaCalidad;
+  const est = estado(datos.pctRepetidos, true, meta, meta);
+  contadorDetalle++;
+  const idDetalle = 'detalle' + contadorDetalle;
+  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  html += '<p class="explica">' + explicacion + '</p>';
+  html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
+  html += barra(datos.pctRepetidos, est.clase);
+  html += '<p class="frase-clave">De tus <b>' + datos.totalOrdenes + '</b> órdenes cerradas, <b>' + datos.repetidos30Dias + '</b> se repitieron dentro de 30 días (' + datos.pctRepetidos.toFixed(1) + '%).</p>';
+  html += '<p class="frase-clave">Hasta <b>' + meta.toFixed(2) + '%</b> vas bien (✅), sobre eso es foco prioritario (🔴). Meta de tu ciudad: no superar ' + meta.toFixed(2) + '%.</p>';
+  html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
+  html += '<div class="detalle-body" id="' + idDetalle + '">';
+  html += '<div class="fila-dato"><span class="k">Total órdenes</span><span class="v">' + datos.totalOrdenes + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Repetidos 30 días</span><span class="v">' + datos.repetidos30Dias + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Umbral ✅ Buen desempeño (hasta)</span><span class="v">' + meta.toFixed(2) + '%</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function bloqueDerivaciones(datos) {
+  const icono = '↪️', titulo = 'Derivaciones (Alta/Migración)';
+  const explicacion = 'Mide qué porcentaje de tus órdenes de Alta o Migración terminaron derivadas (no realizadas) en vez de completadas. Mientras más bajo, mejor. Avance del mes: ' + DATA.periodoMatriz + '.';
+  if (!datos) {
+    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+      + '<p class="explica">' + explicacion + '</p>'
+      + '<p class="sin-datos">No hay órdenes de Alta/Migración registradas para ti en este período.</p>';
+  }
+  const est = estado(datos.pctDerivaciones, true, META_DERIVACIONES, META_DERIVACIONES * 1.5);
+  contadorDetalle++;
+  const idDetalle = 'detalle' + contadorDetalle;
+  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  html += '<p class="explica">' + explicacion + '</p>';
+  html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
+  html += barra(datos.pctDerivaciones, est.clase);
+  html += '<p class="frase-clave">De tus <b>' + datos.qOrdenes + '</b> órdenes, <b>' + datos.qDerivaciones + '</b> fueron derivadas (' + datos.pctDerivaciones.toFixed(1) + '%). Meta: no superar <b>' + META_DERIVACIONES + '%</b>.</p>';
+  html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
+  html += '<div class="detalle-body" id="' + idDetalle + '">';
+  html += '<div class="fila-dato"><span class="k">Q Órdenes</span><span class="v">' + datos.qOrdenes + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Q Derivaciones</span><span class="v">' + datos.qDerivaciones + '</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function bloqueRgu(datos) {
+  const icono = '📶', titulo = 'Producción RGU';
+  const explicacion = 'Mide tu producción de RGU completada GSA frente a tu meta (' + (datos ? datos.metaDiaria : '') + ' por día trabajado). Mientras más alto, mejor. Avance del mes: ' + DATA.periodoMatriz + '.';
+  if (!datos) {
+    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+      + '<p class="explica">Mide tu producción de RGU completada GSA frente a tu meta diaria. Avance del mes: ' + DATA.periodoMatriz + '.</p>'
+      + '<p class="sin-datos">No hay RGU registrados para ti en este período.</p>';
+  }
+  const est = estado(datos.pctCumplimiento, false, 100, 80);
+  contadorDetalle++;
+  const idDetalle = 'detalle' + contadorDetalle;
+  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  html += '<p class="explica">' + explicacion + '</p>';
+  html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
+  html += barra(datos.pctCumplimiento, est.clase);
+  html += '<p class="frase-clave">Completaste <b>' + datos.rguCompletadaGsa.toFixed(2) + '</b> RGU GSA en <b>' + datos.diasConGsa + '</b> día' + (datos.diasConGsa === 1 ? '' : 's') + ' trabajado' + (datos.diasConGsa === 1 ? '' : 's') + ', frente a una meta de <b>' + datos.metaPeriodo.toFixed(2) + '</b> (' + datos.metaDiaria + ' por día) — <b>' + datos.pctCumplimiento.toFixed(1) + '%</b> de cumplimiento.</p>';
+  html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
+  html += '<div class="detalle-body" id="' + idDetalle + '">';
+  html += '<div class="fila-dato"><span class="k">RGU Completada GSA</span><span class="v">' + datos.rguCompletadaGsa.toFixed(2) + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">RGU Total (con no completadas)</span><span class="v">' + datos.rguTotal.toFixed(2) + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Días trabajados (con GSA)</span><span class="v">' + datos.diasConGsa + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Meta diaria</span><span class="v">' + datos.metaDiaria + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Meta del período</span><span class="v">' + datos.metaPeriodo.toFixed(2) + '</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function toggleDetalle(id) {
+  const el = document.getElementById(id);
+  const flecha = document.getElementById(id + 'Flecha');
+  const abierto = el.classList.toggle('abierto');
+  flecha.textContent = abierto ? '▴' : '▾';
+}
+window.toggleDetalle = toggleDetalle;
+
+function mostrarPerfil(t) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('appBox').style.display = 'block';
+  document.getElementById('saludo').textContent = '👋 Hola, ' + titleCase(t.nombre);
+  let meta = [];
+  if (t.supervisor) meta.push('Supervisor: ' + titleCase(t.supervisor));
+  if (t.agencia) meta.push('Agencia: ' + titleCase(t.agencia));
+  document.getElementById('datosTecnico').textContent = meta.join(' · ');
+
+  const estados = [];
+  if (t.calidad) estados.push(estado(t.calidad.pctRepetidos, true, t.calidad.metaCalidad, t.calidad.metaCalidad).clase);
+  if (t.derivaciones) estados.push(estado(t.derivaciones.pctDerivaciones, true, META_DERIVACIONES, META_DERIVACIONES * 1.5).clase);
+  if (t.rgu) estados.push(estado(t.rgu.pctCumplimiento, false, 100, 80).clase);
+  let claseGeneral = 'ok', mensajeGeneral = '🎉 <b>Vas bien este mes.</b> <span>Tus indicadores están en buen nivel. Sigue así.</span>';
+  if (estados.includes('bad')) {
+    claseGeneral = 'bad';
+    mensajeGeneral = '🔴 <b>Tienes un indicador en foco prioritario.</b> <span>Mira el detalle abajo para saber en qué enfocarte.</span>';
+  } else if (estados.includes('warn')) {
+    claseGeneral = 'warn';
+    mensajeGeneral = '⚠️ <b>Tienes un indicador que requiere atención.</b> <span>Revisa el detalle abajo.</span>';
+  }
+  const emojiGeneral = claseGeneral === 'ok' ? '🎉' : (claseGeneral === 'warn' ? '⚠️' : '🔴');
+  document.getElementById('resumenGeneral').innerHTML =
+    '<div class="resumen-general ' + claseGeneral + '"><div class="emoji">' + emojiGeneral + '</div><div class="texto">' + mensajeGeneral + '</div></div>';
+
+  document.getElementById('seccionCalidad').innerHTML = bloqueCalidad(t.calidad);
+  document.getElementById('seccionDerivaciones').innerHTML = bloqueDerivaciones(t.derivaciones);
+  document.getElementById('seccionRgu').innerHTML = bloqueRgu(t.rgu);
+}
+
+function intentarLogin() {
+  const key = document.getElementById('inputNombre').value.trim();
+  const errorBox = document.getElementById('loginError');
+  const t = DATA.tecnicos[key];
+  if (!t || !key) {
+    errorBox.textContent = 'ID CAT no encontrado.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  errorBox.style.display = 'none';
+  sessionStorage.setItem('portalTecnicoKey', key);
+  mostrarPerfil(t);
+}
+
+document.getElementById('loginBtn').addEventListener('click', intentarLogin);
+document.getElementById('inputNombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') intentarLogin(); });
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('portalTecnicoKey');
+  document.getElementById('appBox').style.display = 'none';
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('inputNombre').value = '';
+});
+
+const keyGuardada = sessionStorage.getItem('portalTecnicoKey');
+if (keyGuardada && DATA.tecnicos[keyGuardada]) {
+  mostrarPerfil(DATA.tecnicos[keyGuardada]);
+}
+</script>
+
+</body>
+</html>

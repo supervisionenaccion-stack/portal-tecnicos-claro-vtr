@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Técnicos · Claro/VTR</title>
+<meta name="theme-color" content="#003c71">
+<style>
+  :root{
+    --bg:#eef1f4; --panel:#ffffff; --panel-2:#f5f7f9; --border:#e0e5ea; --text:#22303f; --text-dim:#6b7a8c;
+    --cobra-navy:#003c71; --cobra-blue:#0071ce; --celeste:#29a9e0; --celeste-soft:#e8f6fd;
+    --ok:#1fa971; --ok-bg:#e2f6ee; --warn:#e2962e; --warn-bg:#fdf1e2; --bad:#e2523e; --bad-bg:#fce4e0;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; font-family:'Segoe UI', Arial, sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+  header.hero{
+    background:linear-gradient(120deg,#ffffff 0%,var(--celeste-soft) 55%,#dcf1fb 100%);
+    padding:34px 6vw 40px; position:relative; overflow:hidden; border-bottom:4px solid var(--celeste);
+  }
+  header.hero::after{
+    content:""; position:absolute; right:-100px; top:-100px; width:340px; height:340px; border-radius:50%;
+    background:radial-gradient(circle, rgba(41,169,224,0.18), transparent 70%);
+  }
+  .brand-row{ display:flex; align-items:center; gap:18px; margin-bottom:22px; }
+  .brand-row img{ height:46px; }
+  .brand-divider{ width:1px; height:34px; background:var(--border); }
+  .eyebrow{ text-transform:uppercase; letter-spacing:.14em; font-size:12.5px; color:var(--celeste); font-weight:800; }
+  h1{ margin:0 0 6px; font-size:clamp(24px,4vw,34px); font-weight:800; letter-spacing:-0.01em; color:var(--cobra-navy); }
+  .subtitle{ color:#3a4a5c; font-size:14.5px; max-width:640px; line-height:1.55; }
+  main{ padding:36px 6vw 80px; max-width:760px; margin:0 auto; }
+  .panel{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px 24px; box-shadow:0 4px 14px rgba(20,50,80,.05); }
+
+  #loginBox{ max-width:400px; margin:40px auto 0; text-align:center; }
+  #loginBox .icono-login{ font-size:38px; margin-bottom:6px; }
+  #loginBox h2{ margin:0 0 8px; font-size:20px; color:var(--cobra-navy); }
+  #loginBox p.desc{ margin:0 0 22px; font-size:13.5px; color:var(--text-dim); line-height:1.6; }
+  .campo{ margin-bottom:14px; text-align:left; }
+  .campo label{ display:block; font-size:12px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
+  .campo input{ width:100%; padding:12px 13px; border:1px solid var(--border); border-radius:8px; font-size:16px; font-family:inherit; }
+  .campo input:focus{ outline:2px solid var(--celeste); border-color:var(--celeste); }
+  .campo .ayuda{ font-size:11.5px; color:var(--text-dim); margin-top:4px; text-align:left; }
+  #loginBtn{ width:100%; padding:13px; border:none; border-radius:8px; background:var(--cobra-navy); color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; margin-top:8px; }
+  #loginBtn:hover{ background:var(--cobra-blue); }
+  #loginError{ display:none; background:var(--bad-bg); color:var(--bad); border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:14px; text-align:left; }
+
+  #appBox{ display:none; }
+  .top-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:4px; }
+  #logoutBtn{ background:none; border:1px solid var(--border); color:var(--cobra-navy); padding:8px 14px; border-radius:20px; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap; }
+  #logoutBtn:hover{ background:var(--panel-2); }
+  .intro-personal{ font-size:14px; color:var(--text-dim); line-height:1.6; margin:4px 0 22px; }
+
+  .resumen-general{ display:flex; align-items:center; gap:16px; padding:20px 22px; border-radius:14px; margin-bottom:24px; border:1px solid var(--border); }
+  .resumen-general.ok{ background:var(--ok-bg); border-color:rgba(31,169,113,.3); }
+  .resumen-general.warn{ background:var(--warn-bg); border-color:rgba(226,150,46,.3); }
+  .resumen-general.bad{ background:var(--bad-bg); border-color:rgba(226,82,62,.3); }
+  .resumen-general .emoji{ font-size:34px; flex-shrink:0; }
+  .resumen-general .texto b{ display:block; font-size:16px; margin-bottom:2px; }
+  .resumen-general.ok .texto b{ color:var(--ok); }
+  .resumen-general.warn .texto b{ color:var(--warn); }
+  .resumen-general.bad .texto b{ color:var(--bad); }
+  .resumen-general .texto span{ font-size:13px; color:var(--text-dim); }
+
+  .report-card{ margin-bottom:22px; }
+  .report-card .cabecera{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+  .report-card .cabecera .icono{ font-size:22px; }
+  .report-card .cabecera h2{ font-size:17px; color:var(--cobra-navy); margin:0; }
+  .report-card .explica{ font-size:13px; color:var(--text-dim); margin:0 0 16px; line-height:1.55; }
+  .estado-pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 13px; border-radius:20px; font-size:13px; font-weight:700; margin-bottom:14px; }
+  .estado-pill.ok{ background:var(--ok-bg); color:var(--ok); }
+  .estado-pill.warn{ background:var(--warn-bg); color:var(--warn); }
+  .estado-pill.bad{ background:var(--bad-bg); color:var(--bad); }
+
+  .barra-wrap{ margin:10px 0 16px; }
+  .barra-track{ position:relative; height:22px; background:var(--panel-2); border-radius:11px; overflow:visible; }
+  .barra-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:11px; display:flex; align-items:center; justify-content:flex-end; padding-right:10px; min-width:34px; }
+  .barra-fill span{ font-size:11.5px; font-weight:800; color:#fff; white-space:nowrap; }
+  .barra-fill.ok{ background:var(--ok); }
+  .barra-fill.warn{ background:var(--warn); }
+  .barra-fill.bad{ background:var(--bad); }
+
+  .frase-clave{ font-size:14.5px; line-height:1.6; margin:0 0 14px; }
+  .frase-clave b{ color:var(--cobra-navy); }
+
+  .detalle-toggle{ font-size:12.5px; color:var(--celeste); font-weight:700; cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:4px; margin-top:6px; }
+  .detalle-body{ display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--panel-2); }
+  .detalle-body.abierto{ display:block; }
+  .fila-dato{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; font-size:13px; }
+  .fila-dato .k{ color:var(--text-dim); }
+  .fila-dato .v{ font-weight:700; color:var(--text); text-align:right; }
+
+  .callout{ border-left:3px solid var(--celeste); background:linear-gradient(90deg, var(--celeste-soft), transparent); padding:12px 16px; border-radius:0 10px 10px 0; font-size:13px; color:#2c3e50; line-height:1.55; margin-top:14px; }
+  .sin-datos{ color:var(--text-dim); font-size:13.5px; font-style:italic; }
+  footer{ text-align:center; padding:26px; color:var(--text-dim); font-size:11.5px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="brand-row">
+    <img src="logo-cobra.png" alt="Cobra">
+    <div class="brand-divider"></div>
+    <div class="eyebrow">Portal de Técnicos</div>
+  </div>
+  <h1>Mis Indicadores</h1>
+  <div class="subtitle">Acá puedes ver, de forma simple, cómo te va este mes en Claro/VTR y en qué puedes enfocarte para mejorar.</div>
+</header>
+
+<main>
+  <div id="loginBox" class="panel">
+    <div class="icono-login">👋</div>
+    <h2>Bienvenido</h2>
+    <p class="desc">Ingresa con tu ID CAT para ver tu reporte personal. Nadie más puede ver tu información.</p>
+    <div id="loginError"></div>
+    <div class="campo">
+      <label for="inputNombre">ID CAT</label>
+      <input type="text" id="inputNombre" placeholder="Ej: 123456" autocomplete="username" inputmode="numeric" maxlength="6">
+      <div class="ayuda">Son los últimos 6 caracteres de tu RUT, incluido el dígito verificador (si termina en K, usa 0).</div>
+    </div>
+    <button id="loginBtn">Ver mi reporte</button>
+  </div>
+
+  <div id="appBox">
+    <div class="top-row">
+      <div>
+        <h1 id="saludo" style="font-size:22px;margin-bottom:2px;"></h1>
+        <div class="subtitle" id="datosTecnico" style="font-size:13px;"></div>
+      </div>
+      <button id="logoutBtn">Cerrar sesión</button>
+    </div>
+    <p class="intro-personal">Este es tu reporte personal. Te mostramos cómo vas este mes con tus órdenes de trabajo, y en qué puedes enfocarte para mejorar.</p>
+
+    <div id="resumenGeneral"></div>
+
+    <div class="report-card panel" id="seccionCalidad"></div>
+    <div class="report-card panel" id="seccionDerivaciones"></div>
+    <div class="report-card panel" id="seccionRgu"></div>
+  </div>
+</main>
+
+<footer id="footerText"></footer>
+
+<script>
+const DATA = __DATA_JSON__;
+
+function titleCase(s) { return (s || '').split(' ').map(w => w ? w[0] + w.slice(1).toLowerCase() : w).join(' '); }
+
+document.getElementById('footerText').innerHTML =
+  'Calidad: ' + DATA.periodoCalidad + ' (mes completo) · Derivaciones/RGU: ' + DATA.periodoMatriz + ' (avance del mes) · Generado ' + DATA.generadoEl;
+
+// Meta oficial de Derivaciones (Alta/Migracion): no superar 35%.
+const META_DERIVACIONES = 35;
+
+// goodWhenLow=true: mientras mas bajo el % mejor (Calidad, Derivaciones).
+// goodWhenLow=false: mientras mas alto el % mejor (RGU Completada GSA).
+function estado(pct, goodWhenLow, umbralOk, umbralWarn) {
+  const cumpleOk = goodWhenLow ? pct <= umbralOk : pct >= umbralOk;
+  const cumpleWarn = goodWhenLow ? pct <= umbralWarn : pct >= umbralWarn;
+  if (cumpleOk) return { emoji: '✅', texto: 'Buen desempeño', clase: 'ok' };
+  if (cumpleWarn) return { emoji: '⚠️', texto: 'Atención', clase: 'warn' };
+  return { emoji: '🔴', texto: 'Foco prioritario', clase: 'bad' };
+}
+
+function barra(pct, cls) {
+  const ancho = Math.max(0, Math.min(100, pct));
+  return '<div class="barra-wrap"><div class="barra-track">'
+    + '<div class="barra-fill ' + cls + '" style="width:' + ancho.toFixed(1) + '%"><span>' + pct.toFixed(1) + '%</span></div>'
+    + '</div></div>';
+}
+
+let contadorDetalle = 0;
+
+function bloqueCalidad(datos) {
+  const icono = '🔁', titulo = 'Calidad (repetidos 30 días)';
+  const explicacion = 'Mide si una orden tuya vuelve a repetirse antes de 30 días. Mientras más bajo, mejor. Se calcula con el mes anterior completo (' + DATA.periodoCalidad + ') porque el indicador necesita ese tiempo para madurar.';
+  if (!datos) {
+    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+      + '<p class="explica">' + explicacion + '</p>'
+      + '<p class="sin-datos">No hay órdenes registradas para ti en este período.</p>';
+  }
+  const meta = datos.metaCalidad;
+  const est = estado(datos.pctRepetidos, true, meta, meta);
+  contadorDetalle++;
+  const idDetalle = 'detalle' + contadorDetalle;
+  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  html += '<p class="explica">' + explicacion + '</p>';
+  html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
+  html += barra(datos.pctRepetidos, est.clase);
+  html += '<p class="frase-clave">De tus <b>' + datos.totalOrdenes + '</b> órdenes cerradas, <b>' + datos.repetidos30Dias + '</b> se repitieron dentro de 30 días (' + datos.pctRepetidos.toFixed(1) + '%).</p>';
+  html += '<p class="frase-clave">Hasta <b>' + meta.toFixed(2) + '%</b> vas bien (✅), sobre eso es foco prioritario (🔴). Meta de tu ciudad: no superar ' + meta.toFixed(2) + '%.</p>';
+  html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
+  html += '<div class="detalle-body" id="' + idDetalle + '">';
+  html += '<div class="fila-dato"><span class="k">Total órdenes</span><span class="v">' + datos.totalOrdenes + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Repetidos 30 días</span><span class="v">' + datos.repetidos30Dias + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Umbral ✅ Buen desempeño (hasta)</span><span class="v">' + meta.toFixed(2) + '%</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function bloqueDerivaciones(datos) {
+  const icono = '↪️', titulo = 'Derivaciones (Alta/Migración)';
+  const explicacion = 'Mide qué porcentaje de tus órdenes de Alta o Migración terminaron derivadas (no realizadas) en vez de completadas. Mientras más bajo, mejor. Avance del mes: ' + DATA.periodoMatriz + '.';
+  if (!datos) {
+    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+      + '<p class="explica">' + explicacion + '</p>'
+      + '<p class="sin-datos">No hay órdenes de Alta/Migración registradas para ti en este período.</p>';
+  }
+  const est = estado(datos.pctDerivaciones, true, META_DERIVACIONES, META_DERIVACIONES * 1.5);
+  contadorDetalle++;
+  const idDetalle = 'detalle' + contadorDetalle;
+  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  html += '<p class="explica">' + explicacion + '</p>';
+  html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
+  html += barra(datos.pctDerivaciones, est.clase);
+  html += '<p class="frase-clave">De tus <b>' + datos.qOrdenes + '</b> órdenes, <b>' + datos.qDerivaciones + '</b> fueron derivadas (' + datos.pctDerivaciones.toFixed(1) + '%). Meta: no superar <b>' + META_DERIVACIONES + '%</b>.</p>';
+  html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
+  html += '<div class="detalle-body" id="' + idDetalle + '">';
+  html += '<div class="fila-dato"><span class="k">Q Órdenes</span><span class="v">' + datos.qOrdenes + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Q Derivaciones</span><span class="v">' + datos.qDerivaciones + '</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function bloqueRgu(datos) {
+  const icono = '📶', titulo = 'Producción RGU';
+  const explicacion = 'Mide tu producción de RGU completada GSA frente a tu meta (' + (datos ? datos.metaDiaria : '') + ' por día trabajado). Mientras más alto, mejor. Avance del mes: ' + DATA.periodoMatriz + '.';
+  if (!datos) {
+    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+      + '<p class="explica">Mide tu producción de RGU completada GSA frente a tu meta diaria. Avance del mes: ' + DATA.periodoMatriz + '.</p>'
+      + '<p class="sin-datos">No hay RGU registrados para ti en este período.</p>';
+  }
+  const est = estado(datos.pctCumplimiento, false, 100, 80);
+  contadorDetalle++;
+  const idDetalle = 'detalle' + contadorDetalle;
+  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  html += '<p class="explica">' + explicacion + '</p>';
+  html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
+  html += barra(datos.pctCumplimiento, est.clase);
+  html += '<p class="frase-clave">Completaste <b>' + datos.rguCompletadaGsa.toFixed(2) + '</b> RGU GSA en <b>' + datos.diasConGsa + '</b> día' + (datos.diasConGsa === 1 ? '' : 's') + ' trabajado' + (datos.diasConGsa === 1 ? '' : 's') + ', frente a una meta de <b>' + datos.metaPeriodo.toFixed(2) + '</b> (' + datos.metaDiaria + ' por día) — <b>' + datos.pctCumplimiento.toFixed(1) + '%</b> de cumplimiento.</p>';
+  html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
+  html += '<div class="detalle-body" id="' + idDetalle + '">';
+  html += '<div class="fila-dato"><span class="k">RGU Completada GSA</span><span class="v">' + datos.rguCompletadaGsa.toFixed(2) + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">RGU Total (con no completadas)</span><span class="v">' + datos.rguTotal.toFixed(2) + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Días trabajados (con GSA)</span><span class="v">' + datos.diasConGsa + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Meta diaria</span><span class="v">' + datos.metaDiaria + '</span></div>';
+  html += '<div class="fila-dato"><span class="k">Meta del período</span><span class="v">' + datos.metaPeriodo.toFixed(2) + '</span></div>';
+  html += '</div>';
+  return html;
+}
+
+function toggleDetalle(id) {
+  const el = document.getElementById(id);
+  const flecha = document.getElementById(id + 'Flecha');
+  const abierto = el.classList.toggle('abierto');
+  flecha.textContent = abierto ? '▴' : '▾';
+}
+window.toggleDetalle = toggleDetalle;
+
+function mostrarPerfil(t) {
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('appBox').style.display = 'block';
+  document.getElementById('saludo').textContent = '👋 Hola, ' + titleCase(t.nombre);
+  let meta = [];
+  if (t.supervisor) meta.push('Supervisor: ' + titleCase(t.supervisor));
+  if (t.agencia) meta.push('Agencia: ' + titleCase(t.agencia));
+  document.getElementById('datosTecnico').textContent = meta.join(' · ');
+
+  const estados = [];
+  if (t.calidad) estados.push(estado(t.calidad.pctRepetidos, true, t.calidad.metaCalidad, t.calidad.metaCalidad).clase);
+  if (t.derivaciones) estados.push(estado(t.derivaciones.pctDerivaciones, true, META_DERIVACIONES, META_DERIVACIONES * 1.5).clase);
+  if (t.rgu) estados.push(estado(t.rgu.pctCumplimiento, false, 100, 80).clase);
+  let claseGeneral = 'ok', mensajeGeneral = '🎉 <b>Vas bien este mes.</b> <span>Tus indicadores están en buen nivel. Sigue así.</span>';
+  if (estados.includes('bad')) {
+    claseGeneral = 'bad';
+    mensajeGeneral = '🔴 <b>Tienes un indicador en foco prioritario.</b> <span>Mira el detalle abajo para saber en qué enfocarte.</span>';
+  } else if (estados.includes('warn')) {
+    claseGeneral = 'warn';
+    mensajeGeneral = '⚠️ <b>Tienes un indicador que requiere atención.</b> <span>Revisa el detalle abajo.</span>';
+  }
+  const emojiGeneral = claseGeneral === 'ok' ? '🎉' : (claseGeneral === 'warn' ? '⚠️' : '🔴');
+  document.getElementById('resumenGeneral').innerHTML =
+    '<div class="resumen-general ' + claseGeneral + '"><div class="emoji">' + emojiGeneral + '</div><div class="texto">' + mensajeGeneral + '</div></div>';
+
+  document.getElementById('seccionCalidad').innerHTML = bloqueCalidad(t.calidad);
+  document.getElementById('seccionDerivaciones').innerHTML = bloqueDerivaciones(t.derivaciones);
+  document.getElementById('seccionRgu').innerHTML = bloqueRgu(t.rgu);
+}
+
+function intentarLogin() {
+  const key = document.getElementById('inputNombre').value.trim();
+  const errorBox = document.getElementById('loginError');
+  const t = DATA.tecnicos[key];
+  if (!t || !key) {
+    errorBox.textContent = 'ID CAT no encontrado.';
+    errorBox.style.display = 'block';
+    return;
+  }
+  errorBox.style.display = 'none';
+  sessionStorage.setItem('portalTecnicoKey', key);
+  mostrarPerfil(t);
+}
+
+document.getElementById('loginBtn').addEventListener('click', intentarLogin);
+document.getElementById('inputNombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') intentarLogin(); });
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  sessionStorage.removeItem('portalTecnicoKey');
+  document.getElementById('appBox').style.display = 'none';
+  document.getElementById('loginBox').style.display = 'block';
+  document.getElementById('inputNombre').value = '';
+});
+
+const keyGuardada = sessionStorage.getItem('portalTecnicoKey');
+if (keyGuardada && DATA.tecnicos[keyGuardada]) {
+  mostrarPerfil(DATA.tecnicos[keyGuardada]);
+}
+</script>
+
+</body>
+</html>

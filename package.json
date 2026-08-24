@@ -1,0 +1,17 @@
+{
+  "name": "portal-tecnicos",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "generar": "node generar_portal.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "mssql": "^12.7.0"
+  }
+}

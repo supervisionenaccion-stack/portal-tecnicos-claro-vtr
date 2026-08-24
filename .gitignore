@@ -1,0 +1,12 @@
+# dependencies
+/node_modules
+
+# env files
+.env*
+
+# credenciales de tecnicos: SOLO local, nunca se sube
+Credenciales_Tecnicos_NO_SUBIR.xlsx
+~$Credenciales_Tecnicos_NO_SUBIR.xlsx
+
+# misc
+.DS_Store
