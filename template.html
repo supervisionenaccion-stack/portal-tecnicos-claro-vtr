@@ -71,9 +71,12 @@
   .estado-pill.bad{ background:var(--bad-bg); color:var(--bad); }
 
   .barra-wrap{ margin:10px 0 16px; }
-  .barra-track{ position:relative; height:22px; background:var(--panel-2); border-radius:11px; overflow:visible; }
-  .barra-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:11px; display:flex; align-items:center; justify-content:flex-end; padding-right:10px; min-width:34px; }
-  .barra-fill span{ font-size:11.5px; font-weight:800; color:#fff; white-space:nowrap; }
+  .barra-label{ font-size:15px; font-weight:800; margin-bottom:5px; }
+  .barra-label.ok{ color:var(--ok); }
+  .barra-label.warn{ color:var(--warn); }
+  .barra-label.bad{ color:var(--bad); }
+  .barra-track{ position:relative; height:14px; background:var(--panel-2); border-radius:7px; overflow:hidden; }
+  .barra-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:7px; min-width:6px; }
   .barra-fill.ok{ background:var(--ok); }
   .barra-fill.warn{ background:var(--warn); }
   .barra-fill.bad{ background:var(--bad); }
@@ -162,9 +165,10 @@ function estado(pct, goodWhenLow, umbralOk, umbralWarn) {
 
 function barra(pct, cls) {
   const ancho = Math.max(0, Math.min(100, pct));
-  return '<div class="barra-wrap"><div class="barra-track">'
-    + '<div class="barra-fill ' + cls + '" style="width:' + ancho.toFixed(1) + '%"><span>' + pct.toFixed(1) + '%</span></div>'
-    + '</div></div>';
+  return '<div class="barra-wrap">'
+    + '<div class="barra-label ' + cls + '">' + pct.toFixed(1) + '%</div>'
+    + '<div class="barra-track"><div class="barra-fill ' + cls + '" style="width:' + ancho.toFixed(1) + '%"></div></div>'
+    + '</div>';
 }
 
 let contadorDetalle = 0;
@@ -186,7 +190,7 @@ function bloqueCalidad(datos) {
   html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
   html += barra(datos.pctRepetidos, est.clase);
   html += '<p class="frase-clave">De tus <b>' + datos.totalOrdenes + '</b> órdenes cerradas, <b>' + datos.repetidos30Dias + '</b> se repitieron dentro de 30 días (' + datos.pctRepetidos.toFixed(1) + '%).</p>';
-  html += '<p class="frase-clave">Hasta <b>' + meta.toFixed(2) + '%</b> vas bien (✅), sobre eso es foco prioritario (🔴). Meta de tu ciudad: no superar ' + meta.toFixed(2) + '%.</p>';
+  html += '<p class="frase-clave">Meta de tu ciudad: no superar <b>' + meta.toFixed(2) + '%</b>.</p>';
   html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
   html += '<div class="detalle-body" id="' + idDetalle + '">';
   html += '<div class="fila-dato"><span class="k">Total órdenes</span><span class="v">' + datos.totalOrdenes + '</span></div>';
