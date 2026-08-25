@@ -130,7 +130,7 @@ async function fetchCalidadBase(pool, startStr, endStr) {
     .request()
     .input("start", sql.Date, startStr)
     .input("end", sql.Date, endStr).query(`
-    SELECT [Orden de Trabajo], Rut_Tecnico, NOMBRE_TECNICO, Empresa, Fecha_Cierre
+    SELECT [Orden de Trabajo], Rut_Tecnico, NOMBRE_TECNICO, Empresa, Fecha_Cierre, TipoActividadPrimerServicio
     FROM CALIDAD_VTR
     WHERE Fecha_Cierre >= @start AND Fecha_Cierre < @end
   `);
@@ -147,7 +147,8 @@ async function fetchCalidadRepetidos(pool) {
         [Orden de Trabajo] AS PrimerOrden,
         EsRepetido30Dias,
         Fecha_Cierre AS FechaPrimerCierre,
-        Fecha_Cierre_Repetido AS FechaRepetido
+        Fecha_Cierre_Repetido AS FechaRepetido,
+        CodigoCierreRepetido
     FROM CALIDAD_VTR
     WHERE [Orden Repetido] IS NOT NULL
   `);
@@ -247,7 +248,7 @@ function calcularCalidad(baseRows, repRows, supervisores) {
 
   function bucketDia(fecha) {
     if (!porDia.has(fecha)) {
-      porDia.set(fecha, { total: 0, rep: 0, porSupervisor: new Map() });
+      porDia.set(fecha, { total: 0, rep: 0, porSupervisor: new Map(), porTecnico: new Map() });
     }
     return porDia.get(fecha);
   }
@@ -281,6 +282,7 @@ function calcularCalidad(baseRows, repRows, supervisores) {
         agencia,
         totalOrdenes: 0,
         repetidos30Dias: 0,
+        eventosRepetidos: [],
       });
     }
     const t = porTecnico.get(rut);
@@ -288,12 +290,24 @@ function calcularCalidad(baseRows, repRows, supervisores) {
     t.repetidos30Dias += esRepetido;
     if (!t.supervisor && supervisor) t.supervisor = supervisor;
     if (!t.agencia && agencia) t.agencia = agencia;
+    if (esRepetido) {
+      const dias =
+        match.FechaPrimerCierre && match.FechaRepetido
+          ? Math.round(Math.abs(new Date(match.FechaRepetido).getTime() - new Date(match.FechaPrimerCierre).getTime()) / 86400000)
+          : null;
+      t.eventosRepetidos.push({
+        causa: match.CodigoCierreRepetido || "Sin causa registrada",
+        dias,
+        tipoActividad: row.TipoActividadPrimerServicio || null,
+      });
+    }
 
     const fecha = toSqlDate(new Date(row.Fecha_Cierre));
     const dia = bucketDia(fecha);
     dia.total += 1;
     dia.rep += esRepetido;
     sumarGrupo(dia.porSupervisor, supervisor, esRepetido);
+    sumarGrupo(dia.porTecnico, rut, esRepetido);
   }
   return { porTecnico: [...porTecnico.values()], porDia };
 }
@@ -346,11 +360,11 @@ function construirEvolutivoCalidad(porDia, now = new Date()) {
 // meses completos (nunca el mes en curso), no hace falta filtrar por
 // madurez aqui -- ya viene resuelto por el rango de fechas consultado.
 function construirEvolutivoMensual(porDia) {
-  const porMes = new Map(); // "yyyy-mm" -> { total, rep, porSupervisor: Map }
+  const porMes = new Map(); // "yyyy-mm" -> { total, rep, porSupervisor: Map, porTecnico: Map }
 
   for (const [fecha, dia] of porDia.entries()) {
     const mes = fecha.slice(0, 7);
-    if (!porMes.has(mes)) porMes.set(mes, { total: 0, rep: 0, porSupervisor: new Map() });
+    if (!porMes.has(mes)) porMes.set(mes, { total: 0, rep: 0, porSupervisor: new Map(), porTecnico: new Map() });
     const m = porMes.get(mes);
     m.total += dia.total;
     m.rep += dia.rep;
@@ -360,24 +374,37 @@ function construirEvolutivoMensual(porDia) {
       ms.total += g.total;
       ms.rep += g.rep;
     }
+    for (const [rut, g] of dia.porTecnico.entries()) {
+      if (!m.porTecnico.has(rut)) m.porTecnico.set(rut, { total: 0, rep: 0 });
+      const mt = m.porTecnico.get(rut);
+      mt.total += g.total;
+      mt.rep += g.rep;
+    }
   }
 
   const meses = [...porMes.keys()].sort();
   const pct = (g) => (g && g.total ? Math.round((g.rep / g.total) * 1000) / 10 : null);
 
   const supervisoresUnicos = new Set();
+  const tecnicosUnicos = new Set();
   for (const m of porMes.values()) {
     for (const k of m.porSupervisor.keys()) supervisoresUnicos.add(k);
+    for (const k of m.porTecnico.keys()) tecnicosUnicos.add(k);
   }
   const porSupervisor = {};
   for (const nombre of supervisoresUnicos) {
     porSupervisor[nombre] = meses.map((mes) => pct(porMes.get(mes).porSupervisor.get(nombre)));
+  }
+  const porTecnico = {};
+  for (const rut of tecnicosUnicos) {
+    porTecnico[rut] = meses.map((mes) => pct(porMes.get(mes).porTecnico.get(rut)));
   }
 
   return {
     meses,
     todos: meses.map((mes) => pct(porMes.get(mes))),
     porSupervisor,
+    porTecnico,
   };
 }
 
@@ -480,6 +507,18 @@ function calcularRgu(baseRows, supervisores) {
   return resultado;
 }
 
+// ---------- 2c. Tecnicos de baja: exclusion manual (SUPERVISORES_VTR no tiene columna de estado) ----------
+// La BD no distingue tecnicos activos de los que ya no trabajan -- la tabla
+// simplemente sigue listando a todos los que alguna vez tuvieron datos. Por
+// eso se mantiene una lista local aparte (con RUT completo, nunca se sube a
+// git) para excluirlos del portal en cada corrida.
+function loadRutsBaja() {
+  const bajaPath = path.join(__dirname, "Tecnicos_Baja_NO_SUBIR.json");
+  if (!fs.existsSync(bajaPath)) return new Set();
+  const lista = JSON.parse(fs.readFileSync(bajaPath, "utf-8"));
+  return new Set(lista.map((t) => normalizeRut(t.rut)));
+}
+
 // ---------- 3. idCAT a partir del RUT (no se publica el RUT completo) ----------
 function normalizeRut(rut) {
   return String(rut).trim().toUpperCase().replace(/\./g, "").replace(/-/g, "");
@@ -541,7 +580,7 @@ async function main() {
   const derivaciones = calcularDerivaciones(derivBase, supervisores);
   const rgu = calcularRgu(rguBase, supervisores);
   const evolutivoCalidad = construirEvolutivoCalidad(calidadPorDia);
-  const { porDia: historicoPorDia } = calcularCalidad(calidadHistorico, calidadRep, supervisores);
+  const { porTecnico: calidadAnual, porDia: historicoPorDia } = calcularCalidad(calidadHistorico, calidadRep, supervisores);
   const evolutivoMensual = construirEvolutivoMensual(historicoPorDia);
   console.log(
     `==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length} | Evolutivo diario: ${evolutivoCalidad.fechas.length} dias maduros | Evolutivo mensual: ${evolutivoMensual.meses.length} meses`
@@ -576,7 +615,16 @@ async function main() {
       repetidos30Dias: row.repetidos30Dias,
       pctRepetidos: row.totalOrdenes ? (row.repetidos30Dias / row.totalOrdenes) * 100 : 0,
       metaCalidad: metaCalidadPorAgencia(row.agencia),
+      causas: row.eventosRepetidos,
     };
+  }
+  // Mapa aparte (no getOrCreate): la causa anual solo se adjunta a
+  // tecnicos que ya existen por Calidad/Derivaciones/RGU del periodo
+  // actual, para no sumar al listado tecnicos que solo tienen historial en
+  // meses previos y ningun dato en el periodo que muestra el portal.
+  const causasAnualPorRut = new Map();
+  for (const row of calidadAnual) {
+    causasAnualPorRut.set(normalizeRut(row.rut), row.eventosRepetidos);
   }
   for (const row of derivaciones) {
     const t = getOrCreate(row.rut, row.tecnico, row.supervisor, row.agencia);
@@ -596,6 +644,20 @@ async function main() {
       metaPeriodo: row.metaPeriodo,
       pctCumplimiento: row.pctCumplimiento,
     };
+  }
+
+  // ---------- 4b. Excluir tecnicos de baja (lista manual local) ----------
+  const rutsBaja = loadRutsBaja();
+  let excluidosBaja = 0;
+  for (const rut of rutsBaja) {
+    if (byRut.delete(rut)) excluidosBaja += 1;
+  }
+  if (rutsBaja.size > 0) {
+    console.log(`==> Tecnicos de baja excluidos: ${excluidosBaja} de ${rutsBaja.size} en la lista.`);
+  }
+
+  for (const t of byRut.values()) {
+    t.causasAnual = causasAnualPorRut.get(normalizeRut(t.rut)) || [];
   }
 
   // ---------- 5. idCAT: usuario digital unico (sin clave adicional) ----------
@@ -629,6 +691,7 @@ async function main() {
       supervisor: t.supervisor || "",
     });
 
+    const serieMensualPropia = evolutivoMensual.porTecnico[normalizeRut(t.rut)];
     dataParaHtml[idCat] = {
       nombre: t.nombre,
       supervisor: t.supervisor,
@@ -636,6 +699,7 @@ async function main() {
       calidad: t.calidad,
       derivaciones: t.derivaciones,
       rgu: t.rgu,
+      evolutivoMensualPropio: serieMensualPropia ? { meses: evolutivoMensual.meses, valores: serieMensualPropia } : null,
     };
   }
 
@@ -666,6 +730,7 @@ async function main() {
       agencia: t.agencia,
       supervisor: t.supervisor,
       calidad: t.calidad,
+      causasAnual: t.causasAnual || [],
       derivaciones: t.derivaciones,
       rgu: t.rgu,
     })),

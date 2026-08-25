@@ -8,5 +8,8 @@
 Credenciales_Tecnicos_NO_SUBIR.xlsx
 ~$Credenciales_Tecnicos_NO_SUBIR.xlsx
 
+# lista de tecnicos de baja (contiene RUT completo): SOLO local, nunca se sube
+Tecnicos_Baja_NO_SUBIR.json
+
 # misc
 .DS_Store

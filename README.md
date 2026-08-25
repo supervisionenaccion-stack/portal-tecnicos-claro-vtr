@@ -14,6 +14,7 @@ portal-tecnicos/
 ├── generar_portal.js                   ← consulta la BD y regenera index.html + credenciales
 ├── Actualizar_Dashboard.bat            ← DOBLE CLIC: corre generar_portal.js
 ├── Credenciales_Tecnicos_NO_SUBIR.xlsx ← ID CAT de cada tecnico (SOLO local, no se sube)
+├── Tecnicos_Baja_NO_SUBIR.json         ← RUT de tecnicos de baja a excluir (SOLO local, no se sube)
 ├── .env.local                          ← credenciales de la base de datos (SOLO local, no se sube)
 └── .gitignore
 ```
@@ -51,6 +52,23 @@ antes. Aun así, dos RUT distintos podrían coincidir por azar en esos 6
 caracteres (con los ~100 técnicos actuales no ha pasado nunca) — si
 ocurriera, el script lo advierte en la consola porque uno de los dos
 quedaría viendo los datos del otro.
+
+## Tecnicos de baja
+
+`SUPERVISORES_VTR` no tiene una columna de estado (activo/de baja): la tabla
+sigue listando a cualquier RUT que alguna vez tuvo datos. Por eso la
+exclusion de tecnicos que ya no trabajan se maneja a mano, en
+`Tecnicos_Baja_NO_SUBIR.json` (mismo criterio de privacidad que el Excel de
+credenciales: contiene RUT completo, por eso nunca se sube a git). Formato:
+
+```json
+[
+  { "rut": "12345678-9", "nombre": "Referencia para humanos, no se usa para el match" }
+]
+```
+
+`generar_portal.js` los excluye por RUT (normalizado) antes de generar
+`index.html`, `supervisor.html` y el Excel de credenciales, en cada corrida.
 
 ## Privacidad
 

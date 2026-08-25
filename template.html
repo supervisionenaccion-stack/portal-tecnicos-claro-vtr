@@ -154,6 +154,12 @@
     <div id="resumenGeneral"></div>
 
     <div class="report-card panel" id="seccionCalidad"></div>
+    <div class="panel" id="panelEvolutivoPersonal" style="display:none; padding:20px 22px; margin-bottom:22px;">
+      <h2 style="margin:0 0 3px; font-size:15px; color:var(--cobra-navy);">Tu evolución de Calidad mes a mes</h2>
+      <p class="frase-tendencia" id="evolutivoPersonalExplicacion" style="margin:0 0 14px; font-size:15px; font-weight:800; line-height:1.4;"></p>
+      <div id="evolutivoPersonalChart"></div>
+      <p style="margin:12px 0 0; font-size:12px; color:var(--text-dim); line-height:1.5;">% de repetidos de cada mes completo (no acumulado entre meses), desde enero hasta el último mes ya cerrado.</p>
+    </div>
     <div class="report-card panel" id="seccionDerivaciones"></div>
     <div class="report-card panel" id="seccionRgu"></div>
   </div>
@@ -198,6 +204,36 @@ function barra(pct, cls) {
     + '</div>';
 }
 
+// Diccionario de acciones sugeridas por causa de repetido, curado a partir
+// de las causas reales que aparecen en CodigoCierreRepetido. Una causa no
+// mapeada cae en el mensaje generico de abajo.
+const SUGERENCIAS_CAUSA = {
+  'Falla en cable externo Domiciliario': 'Revisa el tendido y la conectorización del cable externo antes de cerrar (crimpado, roseta externa, empalmes expuestos a la intemperie).',
+  'Falla en cable Interno Domiciliario': 'Verifica el cableado interno completo (no solo el punto de falla reportado) y refuerza conectores/rosetas antes de cerrar.',
+  'Configuracion equipo particular cliente': 'Documenta y valida la configuración de equipos propios del cliente (router/switch particular) antes de dar el servicio por cerrado.',
+  'Falla reset plataforma': 'Confirma que el equipo aplicó el último firmware/config tras el reset de plataforma antes de retirarte del domicilio.',
+  'Configuración SSID/Clave/Canal': 'Deja constancia con el cliente del SSID/clave configurados y prueba la conexión real de un dispositivo antes de cerrar.',
+  'Equipo Defectuoso IPTV': 'Prueba el decodificador con contenido en vivo (no solo que encienda) antes de cerrar la orden.',
+  'Equipo Defectuoso ONT': 'Revisa niveles ópticos y el estado del ONT con la herramienta de diagnóstico antes de cerrar.',
+  'Equipo Defectuoso (Control MTA CM dBox VP Fono)': 'Prueba cada equipo de voz/dBox de forma individual, no solo el servicio principal.',
+  'Problemas de cobertura WIFI': 'Evalúa la ubicación del router/extensor según el plano real de la vivienda, no solo el punto de instalación por defecto.',
+  'Falla en equipo de cliente': 'Diferencia explícitamente falla de red vs. equipo del cliente en tus notas de cierre, para evitar reincidencia mal diagnosticada.',
+  'Falla Insumo Telefono': 'Verifica la línea de teléfono con una llamada de prueba antes de cerrar.',
+  'Falla cableado particular del cliente': 'Explica al cliente que el cableado propio no está cubierto y déjalo documentado en el cierre.',
+  'Problema configuración o ubicación de extensor': 'Revisa la ubicación física del extensor Wi-Fi según la intensidad de señal medida, no lo instales por defecto.',
+  'Daño a equipo VTR Domiciliario': 'Revisa el estado físico de los equipos antes de instalarlos, para descartar daños previos.',
+  'Entrega de control remoto': 'Confirma en tu checklist de cierre que entregaste todos los controles.',
+  'Equipo Defectuoso Gateway': 'Revisa el estado del gateway (reinicio de fábrica, actualización de firmware) antes de cerrar.',
+  'Riesgo electrico': 'Reporta el riesgo eléctrico a tu agencia de inmediato, no lo dejes solo como nota de cierre.',
+};
+const SUGERENCIA_GENERICA = 'Revisa en terreno los casos con esta causa para identificar un patrón común y reforzarlo la próxima vez.';
+
+function contarCausas(eventos) {
+  const mapa = new Map();
+  for (const e of eventos) mapa.set(e.causa, (mapa.get(e.causa) || 0) + 1);
+  return [...mapa.entries()].map(([causa, cnt]) => ({ causa, cnt })).sort((a, b) => b.cnt - a.cnt);
+}
+
 let contadorDetalle = 0;
 
 function cabecera(icono, titulo, claveInfo) {
@@ -223,11 +259,24 @@ function bloqueCalidad(datos) {
   html += barra(datos.pctRepetidos, est.clase);
   html += '<p class="frase-clave">De tus <b>' + datos.totalOrdenes + '</b> órdenes cerradas, <b>' + datos.repetidos30Dias + '</b> se repitieron dentro de 30 días (' + datos.pctRepetidos.toFixed(1) + '%).</p>';
   html += '<p class="frase-clave">Meta de tu ciudad: no superar <b>' + meta.toFixed(2) + '%</b>.</p>';
+
+  const causas = datos.causas && datos.causas.length > 0 ? contarCausas(datos.causas) : [];
+  if (causas.length > 0) {
+    const top = causas[0];
+    const accion = SUGERENCIAS_CAUSA[top.causa] || SUGERENCIA_GENERICA;
+    html += '<div class="callout">🔍 <b>Tu causa más frecuente de repetido:</b> ' + top.causa + ' (' + top.cnt + ' de ' + datos.repetidos30Dias + ').<br>' + accion + '</div>';
+  }
+
   html += '<div class="detalle-toggle" onclick="toggleDetalle(\'' + idDetalle + '\')">Ver el detalle en números <span id="' + idDetalle + 'Flecha">▾</span></div>';
   html += '<div class="detalle-body" id="' + idDetalle + '">';
   html += '<div class="fila-dato"><span class="k">Total órdenes</span><span class="v">' + datos.totalOrdenes + '</span></div>';
   html += '<div class="fila-dato"><span class="k">Repetidos 30 días</span><span class="v">' + datos.repetidos30Dias + '</span></div>';
   html += '<div class="fila-dato"><span class="k">Umbral ✅ Buen desempeño (hasta)</span><span class="v">' + meta.toFixed(2) + '%</span></div>';
+  if (causas.length > 0) {
+    html += causas.slice(0, 3).map((c) =>
+      '<div class="fila-dato"><span class="k">Causa: ' + c.causa + '</span><span class="v">' + c.cnt + '</span></div>'
+    ).join('');
+  }
   html += '</div>';
   return html;
 }
@@ -283,6 +332,107 @@ function bloqueRgu(datos) {
   return html;
 }
 
+function formatMesCorto(iso) {
+  const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const [, m] = iso.split('-');
+  return MESES[parseInt(m, 10) - 1] || iso;
+}
+
+function dibujarLineChart(el, fechas, valores, formatLabel, etiquetarTodos) {
+  const puntos = valores.map((v, i) => ({ x: i, v })).filter((p) => p.v != null);
+  if (puntos.length < 2) {
+    el.innerHTML = '';
+    return false;
+  }
+
+  const W = 700, H = 220, padL = 42, padR = 16, padT = 24, padB = 30;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const maxV = Math.max(...puntos.map((p) => p.v), 1);
+  const yMax = Math.ceil((maxV * 1.15) / 2) * 2 || 2;
+  const n = fechas.length;
+
+  const xAt = (i) => padL + (n <= 1 ? 0 : (i / (n - 1)) * plotW);
+  const yAt = (v) => padT + plotH - (v / yMax) * plotH;
+
+  const pathD = puntos.map((p, i) => (i === 0 ? 'M' : 'L') + xAt(p.x).toFixed(1) + ',' + yAt(p.v).toFixed(1)).join(' ');
+  const areaD = pathD
+    + ' L' + xAt(puntos[puntos.length - 1].x).toFixed(1) + ',' + (padT + plotH)
+    + ' L' + xAt(puntos[0].x).toFixed(1) + ',' + (padT + plotH) + ' Z';
+
+  const gridLines = [0, 0.5, 1].map((f) => {
+    const v = yMax * f;
+    const y = yAt(v);
+    return '<line x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '" stroke="#e0e5ea" stroke-width="1"/>'
+      + '<text x="' + (padL - 8) + '" y="' + (y + 4).toFixed(1) + '" font-size="10" fill="#6b7a8c" text-anchor="end">' + v.toFixed(0) + '%</text>';
+  }).join('');
+
+  const idxLabels = n <= 9 ? [...Array(n).keys()] : [0, Math.floor((n - 1) / 2), n - 1];
+  const xLabels = [...new Set(idxLabels)].map((i) =>
+    '<text x="' + xAt(i).toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="#6b7a8c" text-anchor="middle">' + formatLabel(fechas[i]) + '</text>'
+  ).join('');
+
+  const puntosAEtiquetar = etiquetarTodos ? puntos : [puntos[puntos.length - 1]];
+  const marcadores = puntosAEtiquetar.map((p) =>
+    '<circle cx="' + xAt(p.x).toFixed(1) + '" cy="' + yAt(p.v).toFixed(1) + '" r="4" fill="var(--cobra-navy)"/>'
+    + '<text x="' + xAt(p.x).toFixed(1) + '" y="' + (yAt(p.v) - 10).toFixed(1) + '" font-size="11" font-weight="700" fill="var(--cobra-navy)" text-anchor="middle">' + p.v.toFixed(1) + '%</text>'
+  ).join('');
+
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:auto; display:block;">'
+    + gridLines
+    + '<path d="' + areaD + '" fill="var(--celeste-soft)" opacity="0.7"/>'
+    + '<path d="' + pathD + '" fill="none" stroke="var(--cobra-blue)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
+    + marcadores
+    + xLabels
+    + '</svg>';
+  return true;
+}
+
+// Titular corto (una linea) que resume la tendencia, para entenderla de un
+// vistazo. En Calidad, bajar es mejorar (menos repetidos).
+//
+// Compara el ultimo mes contra el promedio de los 2-3 meses inmediatamente
+// anteriores, no contra el primer mes de toda la serie: comparar contra el
+// inicio puede decir "mejorando" solo porque un mes muy lejano (ej. enero)
+// era peor, aunque los ultimos meses esten subiendo otra vez -- que es lo
+// que importa para saber si hay que poner ojo ahora.
+function explicarTendencia(valores) {
+  const puntos = valores.filter((v) => v != null);
+  if (puntos.length < 2) return '';
+  const ultimo = puntos[puntos.length - 1];
+  const min = Math.min(...puntos);
+  const max = Math.max(...puntos);
+
+  const previos = puntos.slice(Math.max(0, puntos.length - 4), puntos.length - 1);
+  const promedioReciente = previos.reduce((a, b) => a + b, 0) / previos.length;
+  const diff = ultimo - promedioReciente;
+
+  let icono, texto, color;
+  if (Math.abs(diff) < 0.5) {
+    icono = '➡️'; texto = 'Se mantiene estable'; color = 'var(--warn)';
+  } else if (diff < 0) {
+    icono = '✅'; texto = 'Mejorando'; color = 'var(--ok)';
+  } else {
+    icono = '🔴'; texto = 'Atención: la curva va al alza'; color = 'var(--bad)';
+  }
+
+  return '<span style="color:' + color + ';">' + icono + ' ' + texto + ': '
+    + 'promedio meses previos ' + promedioReciente.toFixed(1) + '% → último mes ' + ultimo.toFixed(1) + '%</span>'
+    + '<span style="font-weight:400; font-size:12.5px; color:var(--text-dim);"> (rango: ' + min.toFixed(1) + '%–' + max.toFixed(1) + '%)</span>';
+}
+
+function renderEvolutivoPersonal(t) {
+  const panel = document.getElementById('panelEvolutivoPersonal');
+  const ev = t.evolutivoMensualPropio;
+  if (!ev || !ev.valores || ev.valores.filter((v) => v != null).length < 2) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  dibujarLineChart(document.getElementById('evolutivoPersonalChart'), ev.meses, ev.valores, formatMesCorto, true);
+  document.getElementById('evolutivoPersonalExplicacion').innerHTML = explicarTendencia(ev.valores);
+}
+
 function toggleDetalle(id) {
   const el = document.getElementById(id);
   const flecha = document.getElementById(id + 'Flecha');
@@ -303,13 +453,13 @@ const INFO_METRICAS = {
     titulo: 'Derivaciones (Alta/Migración)',
     queMide: 'Qué porcentaje de tus órdenes de Alta o Migración terminaron derivadas (estado "No Realizada") en vez de completadas. Mientras más bajo el porcentaje, mejor.',
     comoSeCalcula: 'Se calcula con el avance del mes en curso: desde el día 1 hasta el último día con datos completos en el sistema.',
-    meta: 'La meta oficial es no superar el 35%.',
+    meta: 'La meta oficial es no superar el 35%. Entre 35% y 52,5% se marca en amarillo ("Atención"); por sobre 52,5% queda en foco prioritario (rojo).',
   },
   rgu: {
     titulo: 'Producción RGU',
     queMide: 'Tu porcentaje de cumplimiento de la meta de producción. Mientras más alto, mejor: 100% o más significa que cumpliste tu meta.',
     comoSeCalcula: 'RGU completada (orden Completada, o derivada a GSA en vez de perderse) dividida por tu meta del período. La meta del período se calcula como la meta diaria según tu ciudad (Arica 4,3 · Santiago y V Región 4,0) multiplicada por la cantidad de días que trabajaste/produjiste ese mes.',
-    meta: 'Cumples la meta al llegar o superar el 100% de cumplimiento.',
+    meta: 'Cumples la meta al llegar o superar el 100% de cumplimiento. Entre 80% y 99% se marca en amarillo ("Atención"); por debajo de 80% queda en foco prioritario (rojo).',
   },
 };
 
@@ -355,6 +505,7 @@ function mostrarPerfil(t) {
     '<div class="resumen-general ' + claseGeneral + '"><div class="emoji">' + emojiGeneral + '</div><div class="texto">' + mensajeGeneral + '</div></div>';
 
   document.getElementById('seccionCalidad').innerHTML = bloqueCalidad(t.calidad);
+  renderEvolutivoPersonal(t);
   document.getElementById('seccionDerivaciones').innerHTML = bloqueDerivaciones(t.derivaciones);
   document.getElementById('seccionRgu').innerHTML = bloqueRgu(t.rgu);
 }
