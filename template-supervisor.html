@@ -632,10 +632,17 @@ function formatFechaCorta(iso) {
   return d + '/' + m;
 }
 
+// Cada punto de la serie mes a mes se calcula con los cierres de UN mes
+// (ej. julio), pero ese valor es el que se reporta como "Calidad" recien al
+// mes siguiente (agosto), porque el repetido a 30 dias necesita ese tiempo
+// para madurar -- la misma razon por la que "Calidad Agosto" se mide con
+// cierres de julio (ver README). Por eso la etiqueta se corre un mes hacia
+// adelante respecto al mes real de cierre, para mostrar el mes en que ese
+// dato se reporta y no el mes en que se genero.
 function formatMesCorto(iso) {
   const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const [, m] = iso.split('-');
-  return MESES[parseInt(m, 10) - 1] || iso;
+  return MESES[parseInt(m, 10) % 12] || iso;
 }
 
 function dibujarLineChart(el, fechas, valores, formatLabel, etiquetarTodos) {
