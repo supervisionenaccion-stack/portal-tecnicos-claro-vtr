@@ -113,6 +113,8 @@
 
   .callout{ border-left:3px solid var(--celeste); background:linear-gradient(90deg, var(--celeste-soft), transparent); padding:12px 16px; border-radius:0 10px 10px 0; font-size:13px; color:#2c3e50; line-height:1.55; margin-top:14px; }
   .sin-datos{ color:var(--text-dim); font-size:13.5px; font-style:italic; }
+  .comunicados-embed{ border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .comunicados-embed iframe{ width:100%; height:420px; border:none; display:block; }
   footer{ text-align:center; padding:26px; color:var(--text-dim); font-size:11.5px; }
 </style>
 </head>
@@ -163,6 +165,14 @@
     </div>
     <div class="report-card panel" id="seccionDerivaciones"></div>
     <div class="report-card panel" id="seccionRgu"></div>
+
+    <div class="report-card panel" id="seccionComunicados">
+      <div class="cabecera"><span class="icono">📢</span><h2>Comunicados</h2></div>
+      <p class="explica">Novedades y avisos para técnicos Claro/VTR. Hacé clic en cualquier archivo para verlo o descargarlo.</p>
+      <div class="comunicados-embed">
+        <iframe src="https://drive.google.com/embeddedfolderview?id=1ZNMHbP1eVfat_v_Gu6rJp5jziIxNpydk#grid" loading="lazy" title="Comunicados Claro/VTR"></iframe>
+      </div>
+    </div>
   </div>
 </main>
 
