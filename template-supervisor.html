@@ -44,6 +44,21 @@
   .resumen-card .num{ font-size:26px; font-weight:800; color:var(--cobra-navy); }
   .resumen-card .lbl{ font-size:12px; color:var(--text-dim); margin-top:2px; }
 
+  .ranking-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:14px; margin-bottom:18px; }
+  .ranking-card{ padding:16px 18px; }
+  .ranking-card h3{ margin:0 0 10px; font-size:13.5px; color:var(--cobra-navy); }
+  .ranking-grupo{ margin-bottom:10px; }
+  .ranking-grupo:last-child{ margin-bottom:0; }
+  .ranking-grupo .titulo{ font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  .ranking-grupo.mejores .titulo{ color:var(--ok); }
+  .ranking-grupo.peores .titulo{ color:var(--bad); }
+  .ranking-item{ display:flex; justify-content:space-between; gap:8px; font-size:12.5px; padding:3px 0; }
+  .ranking-item .nom{ color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ranking-item .val{ font-weight:700; flex-shrink:0; }
+  .ranking-grupo.mejores .val{ color:var(--ok); }
+  .ranking-grupo.peores .val{ color:var(--bad); }
+  .ranking-vacio{ font-size:12px; color:var(--text-dim); font-style:italic; }
+
   .tabla-wrap{ overflow-x:auto; padding:4px; }
   table{ width:100%; border-collapse:collapse; font-size:13.5px; min-width:720px; }
   thead th{ text-align:left; padding:12px 14px; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-dim); border-bottom:2px solid var(--border); white-space:nowrap; }
@@ -88,10 +103,7 @@
     </div>
   </div>
 
-  <div id="panelDesviado" style="padding:18px 22px; margin-bottom:18px; display:none; border-radius:14px; background:var(--bad-bg); border:1px solid rgba(226,82,62,.3);">
-    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--bad); margin-bottom:8px;">⚠ Técnico más desviado de su meta (en el filtro actual)</div>
-    <div id="desviadoContenido"></div>
-  </div>
+  <div class="ranking-row" id="rankingRow"></div>
 
   <div class="resumen-row" id="resumenRow"></div>
 
@@ -182,36 +194,40 @@ function renderResumen(lista) {
   ].map((c) => '<div class="panel resumen-card"><div class="num">' + c.num + '</div><div class="lbl">' + c.lbl + '</div></div>').join('');
 }
 
-// "Mas desviado" = mayor diferencia entre su % de repetidos y la meta de
-// su ciudad (solo tiene sentido para tecnicos que SUPERAN la meta; si nadie
-// la supera, no se muestra nada).
-function renderTecnicoDesviado(lista) {
-  const panel = document.getElementById('panelDesviado');
-  const contenido = document.getElementById('desviadoContenido');
-  const candidatos = lista
-    .filter((t) => t.calidad)
-    .map((t) => ({ t, desviacion: t.calidad.pctRepetidos - t.calidad.metaCalidad }))
-    .filter((c) => c.desviacion > 0)
-    .sort((a, b) => b.desviacion - a.desviacion);
+function nombreCorto(nombreCompleto) {
+  const partes = nombreCompleto.trim().split(/\s+/);
+  return partes.length <= 2 ? nombreCompleto : partes[0] + ' ' + partes[partes.length - 1];
+}
 
-  if (candidatos.length === 0) {
-    panel.style.display = 'none';
-    return;
+function listaRanking(items, clase) {
+  if (items.length === 0) return '<div class="ranking-vacio">Sin datos suficientes</div>';
+  return items.map((i) =>
+    '<div class="ranking-item"><span class="nom">' + nombreCorto(i.nombre) + '</span><span class="val">' + i.val.toFixed(1) + '%</span></div>'
+  ).join('');
+}
+
+// Top 3 mejores / peores por indicador, dentro del filtro actual. En
+// Calidad y Derivaciones, mejor = % mas bajo; en RGU, mejor = % mas alto.
+function renderRanking(lista) {
+  function construirTarjeta(titulo, extraerPct, mejorEsBajo) {
+    const valores = lista
+      .map((t) => (extraerPct(t) != null ? { nombre: t.nombre, val: extraerPct(t) } : null))
+      .filter(Boolean);
+    const ordenAsc = [...valores].sort((a, b) => a.val - b.val);
+    const mejores = mejorEsBajo ? ordenAsc.slice(0, 3) : ordenAsc.slice(-3).reverse();
+    const peores = mejorEsBajo ? ordenAsc.slice(-3).reverse() : ordenAsc.slice(0, 3);
+
+    return '<div class="panel ranking-card">'
+      + '<h3>' + titulo + '</h3>'
+      + '<div class="ranking-grupo mejores"><div class="titulo">🏆 3 mejores</div>' + listaRanking(mejores) + '</div>'
+      + '<div class="ranking-grupo peores"><div class="titulo">⚠ 3 peores</div>' + listaRanking(peores) + '</div>'
+      + '</div>';
   }
-  panel.style.display = 'block';
-  const peor = candidatos[0];
-  contenido.innerHTML =
-    '<div style="display:flex; align-items:center; gap:16px;">'
-    + '<div style="font-size:32px; flex-shrink:0;">🔴</div>'
-    + '<div>'
-    + '<div style="font-size:18px; font-weight:800; color:var(--bad);">' + peor.t.nombre + ' — ' + peor.desviacion.toFixed(1) + ' pp sobre la meta</div>'
-    + '<div style="font-size:13px; color:var(--text-dim); margin-top:2px;">'
-    + (peor.t.agencia || '') + (peor.t.supervisor ? ' · ' + peor.t.supervisor : '')
-    + ' · Tiene ' + peor.t.calidad.pctRepetidos.toFixed(1) + '% de repetidos (meta: ' + peor.t.calidad.metaCalidad.toFixed(1) + '%)'
-    + (candidatos.length > 1 ? ' · Le sigue ' + candidatos[1].t.nombre + ' (+' + candidatos[1].desviacion.toFixed(1) + 'pp)' : '')
-    + '</div>'
-    + '</div>'
-    + '</div>';
+
+  document.getElementById('rankingRow').innerHTML =
+    construirTarjeta('Calidad (repetidos)', (t) => (t.calidad ? t.calidad.pctRepetidos : null), true)
+    + construirTarjeta('Derivaciones', (t) => (t.derivaciones ? t.derivaciones.pctDerivaciones : null), true)
+    + construirTarjeta('Producción RGU', (t) => (t.rgu ? t.rgu.pctCumplimiento : null), false);
 }
 
 function renderTabla() {
@@ -226,7 +242,7 @@ function renderTabla() {
   );
 
   renderResumen(filtrados);
-  renderTecnicoDesviado(filtrados);
+  renderRanking(filtrados);
 
   const tbody = document.getElementById('tablaBody');
   const sinResultados = document.getElementById('sinResultados');
