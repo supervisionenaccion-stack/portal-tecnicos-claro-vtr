@@ -72,6 +72,17 @@
   .report-card .cabecera{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
   .report-card .cabecera .icono{ font-size:22px; }
   .report-card .cabecera h2{ font-size:17px; color:var(--cobra-navy); margin:0; }
+  .report-card .cabecera h2.clicable{ cursor:pointer; }
+  .report-card .cabecera h2.clicable:hover{ color:var(--cobra-blue); }
+  .report-card .cabecera h2.clicable .info-ico{ font-size:12px; margin-left:4px; opacity:.7; }
+
+  .modal-fondo{ display:none; position:fixed; inset:0; background:rgba(20,30,45,.45); z-index:50; align-items:center; justify-content:center; padding:20px; }
+  .modal-fondo.abierto{ display:flex; }
+  .modal-caja{ background:#fff; border-radius:14px; max-width:420px; width:100%; padding:24px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
+  .modal-caja h3{ margin:0 0 10px; font-size:16px; color:var(--cobra-navy); }
+  .modal-caja p{ margin:0; font-size:13.5px; line-height:1.6; color:var(--text); }
+  .modal-cerrar{ margin-top:18px; width:100%; padding:10px; border:none; border-radius:8px; background:var(--cobra-navy); color:#fff; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .modal-cerrar:hover{ background:var(--cobra-blue); }
   .report-card .explica{ font-size:13px; color:var(--text-dim); margin:0 0 16px; line-height:1.55; }
   .estado-pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 13px; border-radius:20px; font-size:13px; font-weight:700; margin-bottom:14px; }
   .estado-pill.ok{ background:var(--ok-bg); color:var(--ok); }
@@ -148,6 +159,14 @@
   </div>
 </main>
 
+<div class="modal-fondo" id="modalInfo" onclick="if (event.target === this) cerrarInfo()">
+  <div class="modal-caja">
+    <h3 id="modalInfoTitulo"></h3>
+    <p id="modalInfoTexto"></p>
+    <button class="modal-cerrar" onclick="cerrarInfo()">Entendido</button>
+  </div>
+</div>
+
 <footer id="footerText"></footer>
 
 <script>
@@ -181,11 +200,16 @@ function barra(pct, cls) {
 
 let contadorDetalle = 0;
 
+function cabecera(icono, titulo, claveInfo) {
+  return '<div class="cabecera"><span class="icono">' + icono + '</span>'
+    + '<h2 class="clicable" onclick="mostrarInfo(\'' + claveInfo + '\')">' + titulo + '<span class="info-ico">ⓘ</span></h2></div>';
+}
+
 function bloqueCalidad(datos) {
   const icono = '🔁', titulo = 'Calidad (repetidos 30 días)';
   const explicacion = 'Mide si una orden tuya vuelve a repetirse antes de 30 días. Mientras más bajo, mejor. Se calcula con el mes anterior completo (' + DATA.periodoCalidad + ') porque el indicador necesita ese tiempo para madurar.';
   if (!datos) {
-    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+    return cabecera(icono, titulo, 'calidad')
       + '<p class="explica">' + explicacion + '</p>'
       + '<p class="sin-datos">No hay órdenes registradas para ti en este período.</p>';
   }
@@ -193,7 +217,7 @@ function bloqueCalidad(datos) {
   const est = estado(datos.pctRepetidos, true, meta, meta);
   contadorDetalle++;
   const idDetalle = 'detalle' + contadorDetalle;
-  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  let html = cabecera(icono, titulo, 'calidad');
   html += '<p class="explica">' + explicacion + '</p>';
   html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
   html += barra(datos.pctRepetidos, est.clase);
@@ -212,14 +236,14 @@ function bloqueDerivaciones(datos) {
   const icono = '↪️', titulo = 'Derivaciones (Alta/Migración)';
   const explicacion = 'Mide qué porcentaje de tus órdenes de Alta o Migración terminaron derivadas (no realizadas) en vez de completadas. Mientras más bajo, mejor. Avance del mes: ' + DATA.periodoMatriz + '.';
   if (!datos) {
-    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+    return cabecera(icono, titulo, 'derivaciones')
       + '<p class="explica">' + explicacion + '</p>'
       + '<p class="sin-datos">No hay órdenes de Alta/Migración registradas para ti en este período.</p>';
   }
   const est = estado(datos.pctDerivaciones, true, META_DERIVACIONES, META_DERIVACIONES * 1.5);
   contadorDetalle++;
   const idDetalle = 'detalle' + contadorDetalle;
-  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  let html = cabecera(icono, titulo, 'derivaciones');
   html += '<p class="explica">' + explicacion + '</p>';
   html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
   html += barra(datos.pctDerivaciones, est.clase);
@@ -236,14 +260,14 @@ function bloqueRgu(datos) {
   const icono = '📶', titulo = 'Producción RGU';
   const explicacion = 'Mide tu producción de RGU completada GSA frente a tu meta (' + (datos ? datos.metaDiaria : '') + ' por día trabajado). Mientras más alto, mejor. Avance del mes: ' + DATA.periodoMatriz + '.';
   if (!datos) {
-    return '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>'
+    return cabecera(icono, titulo, 'rgu')
       + '<p class="explica">Mide tu producción de RGU completada GSA frente a tu meta diaria. Avance del mes: ' + DATA.periodoMatriz + '.</p>'
       + '<p class="sin-datos">No hay RGU registrados para ti en este período.</p>';
   }
   const est = estado(datos.pctCumplimiento, false, 100, 80);
   contadorDetalle++;
   const idDetalle = 'detalle' + contadorDetalle;
-  let html = '<div class="cabecera"><span class="icono">' + icono + '</span><h2>' + titulo + '</h2></div>';
+  let html = cabecera(icono, titulo, 'rgu');
   html += '<p class="explica">' + explicacion + '</p>';
   html += '<div class="estado-pill ' + est.clase + '">' + est.emoji + ' ' + est.texto + '</div>';
   html += barra(datos.pctCumplimiento, est.clase);
@@ -266,6 +290,44 @@ function toggleDetalle(id) {
   flecha.textContent = abierto ? '▴' : '▾';
 }
 window.toggleDetalle = toggleDetalle;
+
+// Explicaciones que aparecen al hacer clic en el titulo de cada indicador.
+const INFO_METRICAS = {
+  calidad: {
+    titulo: 'Calidad (repetidos)',
+    queMide: 'Si una orden que atendiste requiere una nueva visita por el mismo motivo antes de 30 días. Mientras más bajo el porcentaje, mejor.',
+    comoSeCalcula: 'Se calcula sobre el mes calendario <b>anterior</b> completo, no sobre el mes en curso. Esto es necesario porque el indicador requiere que transcurran los 30 días completos: una orden cerrada hace pocos días aún no ha tenido tiempo de mostrar si se repite.',
+    meta: 'La meta máxima de repetidos varía según tu ciudad (Arica, Santiago, V Región).',
+  },
+  derivaciones: {
+    titulo: 'Derivaciones (Alta/Migración)',
+    queMide: 'Qué porcentaje de tus órdenes de Alta o Migración terminaron derivadas (estado "No Realizada") en vez de completadas. Mientras más bajo el porcentaje, mejor.',
+    comoSeCalcula: 'Se calcula con el avance del mes en curso: desde el día 1 hasta el último día con datos completos en el sistema.',
+    meta: 'La meta oficial es no superar el 35%.',
+  },
+  rgu: {
+    titulo: 'Producción RGU',
+    queMide: 'Tu porcentaje de cumplimiento de la meta de producción. Mientras más alto, mejor: 100% o más significa que cumpliste tu meta.',
+    comoSeCalcula: 'RGU completada (orden Completada, o derivada a GSA en vez de perderse) dividida por tu meta del período. La meta del período se calcula como la meta diaria según tu ciudad (Arica 4,3 · Santiago y V Región 4,0) multiplicada por la cantidad de días que trabajaste/produjiste ese mes.',
+    meta: 'Cumples la meta al llegar o superar el 100% de cumplimiento.',
+  },
+};
+
+function mostrarInfo(clave) {
+  const info = INFO_METRICAS[clave];
+  if (!info) return;
+  document.getElementById('modalInfoTitulo').textContent = info.titulo;
+  document.getElementById('modalInfoTexto').innerHTML =
+    '<b>Qué mide:</b> ' + info.queMide + '<br><br>'
+    + '<b>Cómo se calcula:</b> ' + info.comoSeCalcula + '<br><br>'
+    + '<b>Meta:</b> ' + info.meta;
+  document.getElementById('modalInfo').classList.add('abierto');
+}
+function cerrarInfo() {
+  document.getElementById('modalInfo').classList.remove('abierto');
+}
+window.mostrarInfo = mostrarInfo;
+window.cerrarInfo = cerrarInfo;
 
 function mostrarPerfil(t) {
   document.getElementById('loginBox').style.display = 'none';
