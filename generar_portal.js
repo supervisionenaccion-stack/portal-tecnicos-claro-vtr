@@ -130,7 +130,7 @@ async function fetchCalidadBase(pool, startStr, endStr) {
     .request()
     .input("start", sql.Date, startStr)
     .input("end", sql.Date, endStr).query(`
-    SELECT [Orden de Trabajo], Rut_Tecnico, NOMBRE_TECNICO, Empresa
+    SELECT [Orden de Trabajo], Rut_Tecnico, NOMBRE_TECNICO, Empresa, Fecha_Cierre
     FROM CALIDAD_VTR
     WHERE Fecha_Cierre >= @start AND Fecha_Cierre < @end
   `);
@@ -243,6 +243,21 @@ function calcularCalidad(baseRows, repRows, supervisores) {
   // Empresa, EsRepetido30Dias, SUPERVISOR)
   const vistos = new Set();
   const porTecnico = new Map();
+  const porDia = new Map(); // fecha (yyyy-mm-dd) -> { total, rep, porSupervisor: Map, porAgencia: Map }
+
+  function bucketDia(fecha) {
+    if (!porDia.has(fecha)) {
+      porDia.set(fecha, { total: 0, rep: 0, porSupervisor: new Map(), porAgencia: new Map() });
+    }
+    return porDia.get(fecha);
+  }
+  function sumarGrupo(mapa, clave, esRepetido) {
+    if (!clave) return;
+    if (!mapa.has(clave)) mapa.set(clave, { total: 0, rep: 0 });
+    const g = mapa.get(clave);
+    g.total += 1;
+    g.rep += esRepetido;
+  }
 
   for (const row of baseRows) {
     const match = repetidoPorPrimerOrden.get(row["Orden de Trabajo"]);
@@ -273,8 +288,64 @@ function calcularCalidad(baseRows, repRows, supervisores) {
     t.repetidos30Dias += esRepetido;
     if (!t.supervisor && supervisor) t.supervisor = supervisor;
     if (!t.agencia && agencia) t.agencia = agencia;
+
+    const fecha = toSqlDate(new Date(row.Fecha_Cierre));
+    const dia = bucketDia(fecha);
+    dia.total += 1;
+    dia.rep += esRepetido;
+    sumarGrupo(dia.porSupervisor, supervisor, esRepetido);
+    sumarGrupo(dia.porAgencia, agencia, esRepetido);
   }
-  return [...porTecnico.values()];
+  return { porTecnico: [...porTecnico.values()], porDia };
+}
+
+// Construye la serie acumulada de % repetidos dia a dia, cortando en el
+// ultimo dia que ya tiene los 30 dias necesarios para madurar (no se
+// proyecta ni se muestra la cola inmadura, que se veria artificialmente
+// baja porque sus repetidos aun no tuvieron tiempo de ocurrir).
+function construirEvolutivoCalidad(porDia, now = new Date()) {
+  const fechas = [...porDia.keys()].sort();
+  if (fechas.length === 0) return { fechas: [], series: {} };
+
+  const limiteMaduro = toSqlDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
+  const fechasMaduras = fechas.filter((f) => f <= limiteMaduro);
+
+  function acumularSerie(extraerGrupo) {
+    let total = 0;
+    let rep = 0;
+    return fechasMaduras.map((f) => {
+      const dia = porDia.get(f);
+      const g = extraerGrupo(dia);
+      if (g) {
+        total += g.total;
+        rep += g.rep;
+      }
+      return total ? Math.round((rep / total) * 1000) / 10 : null;
+    });
+  }
+
+  const supervisoresUnicos = new Set();
+  const agenciasUnicas = new Set();
+  for (const dia of porDia.values()) {
+    for (const k of dia.porSupervisor.keys()) supervisoresUnicos.add(k);
+    for (const k of dia.porAgencia.keys()) agenciasUnicas.add(k);
+  }
+
+  const porSupervisor = {};
+  for (const nombre of supervisoresUnicos) {
+    porSupervisor[nombre] = acumularSerie((dia) => dia.porSupervisor.get(nombre));
+  }
+  const porAgencia = {};
+  for (const nombre of agenciasUnicas) {
+    porAgencia[nombre] = acumularSerie((dia) => dia.porAgencia.get(nombre));
+  }
+
+  return {
+    fechas: fechasMaduras,
+    todos: acumularSerie((dia) => dia),
+    porSupervisor,
+    porAgencia,
+  };
 }
 
 // Meta de calidad (maximo % de repetidos aceptado) por ciudad. Segun tabla
@@ -430,10 +501,13 @@ async function main() {
   );
 
   console.log("==> Calculando indicadores localmente...");
-  const calidad = calcularCalidad(calidadBase, calidadRep, supervisores);
+  const { porTecnico: calidad, porDia: calidadPorDia } = calcularCalidad(calidadBase, calidadRep, supervisores);
   const derivaciones = calcularDerivaciones(derivBase, supervisores);
   const rgu = calcularRgu(rguBase, supervisores);
-  console.log(`==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length}`);
+  const evolutivoCalidad = construirEvolutivoCalidad(calidadPorDia);
+  console.log(
+    `==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length} | Evolutivo: ${evolutivoCalidad.fechas.length} dias maduros`
+  );
 
   // byRut: agrupa las 3 fuentes por RUT (clave interna, nunca se publica)
   const byRut = new Map();
@@ -557,6 +631,7 @@ async function main() {
       derivaciones: t.derivaciones,
       rgu: t.rgu,
     })),
+    evolutivoCalidad,
   };
   const htmlSup = templateSup.replace("__DATA_SUPERVISOR_JSON__", JSON.stringify(dataSupervisor));
   const outSupPath = path.join(__dirname, "supervisor.html");
