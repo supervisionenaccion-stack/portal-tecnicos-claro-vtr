@@ -88,17 +88,23 @@
     </div>
   </div>
 
+  <div id="panelDesviado" style="padding:18px 22px; margin-bottom:18px; display:none; border-radius:14px; background:var(--bad-bg); border:1px solid rgba(226,82,62,.3);">
+    <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--bad); margin-bottom:8px;">⚠ Técnico más desviado de su meta (en el filtro actual)</div>
+    <div id="desviadoContenido"></div>
+  </div>
+
   <div class="resumen-row" id="resumenRow"></div>
 
   <div class="panel" id="panelEvolutivo" style="padding:20px 22px; margin-bottom:18px;">
-    <h2 style="margin:0 0 4px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad (repetidos) — <span id="evolutivoTitulo"></span></h2>
-    <p style="margin:0 0 12px; font-size:12.5px; color:var(--text-dim); line-height:1.5;">
+    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad (repetidos) — <span id="evolutivoTitulo"></span></h2>
+    <p class="frase-tendencia" id="evolutivoExplicacion" style="margin:0 0 14px; font-size:16px; font-weight:800; line-height:1.4;"></p>
+    <div id="evolutivoChart"></div>
+    <div class="sin-resultados" id="evolutivoSinDatos" style="display:none; padding:20px 0;">No hay días maduros suficientes para graficar todavía.</div>
+    <p style="margin:12px 0 0; font-size:12px; color:var(--text-dim); line-height:1.5;">
       % acumulado de repetidos a 30 días, día a día, sobre <b id="evolutivoMesLabel"></b>. Se corta en el último día
       que ya cumplió los 30 días necesarios para madurar — los días más recientes de ese mes no se muestran
       porque todavía no tuvieron tiempo de mostrar sus repetidos.
     </p>
-    <div id="evolutivoChart"></div>
-    <div class="sin-resultados" id="evolutivoSinDatos" style="display:none; padding:20px 0;">No hay días maduros suficientes para graficar todavía.</div>
   </div>
 
   <div class="panel tabla-wrap">
@@ -176,6 +182,38 @@ function renderResumen(lista) {
   ].map((c) => '<div class="panel resumen-card"><div class="num">' + c.num + '</div><div class="lbl">' + c.lbl + '</div></div>').join('');
 }
 
+// "Mas desviado" = mayor diferencia entre su % de repetidos y la meta de
+// su ciudad (solo tiene sentido para tecnicos que SUPERAN la meta; si nadie
+// la supera, no se muestra nada).
+function renderTecnicoDesviado(lista) {
+  const panel = document.getElementById('panelDesviado');
+  const contenido = document.getElementById('desviadoContenido');
+  const candidatos = lista
+    .filter((t) => t.calidad)
+    .map((t) => ({ t, desviacion: t.calidad.pctRepetidos - t.calidad.metaCalidad }))
+    .filter((c) => c.desviacion > 0)
+    .sort((a, b) => b.desviacion - a.desviacion);
+
+  if (candidatos.length === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'block';
+  const peor = candidatos[0];
+  contenido.innerHTML =
+    '<div style="display:flex; align-items:center; gap:16px;">'
+    + '<div style="font-size:32px; flex-shrink:0;">🔴</div>'
+    + '<div>'
+    + '<div style="font-size:18px; font-weight:800; color:var(--bad);">' + peor.t.nombre + ' — ' + peor.desviacion.toFixed(1) + ' pp sobre la meta</div>'
+    + '<div style="font-size:13px; color:var(--text-dim); margin-top:2px;">'
+    + (peor.t.agencia || '') + (peor.t.supervisor ? ' · ' + peor.t.supervisor : '')
+    + ' · Tiene ' + peor.t.calidad.pctRepetidos.toFixed(1) + '% de repetidos (meta: ' + peor.t.calidad.metaCalidad.toFixed(1) + '%)'
+    + (candidatos.length > 1 ? ' · Le sigue ' + candidatos[1].t.nombre + ' (+' + candidatos[1].desviacion.toFixed(1) + 'pp)' : '')
+    + '</div>'
+    + '</div>'
+    + '</div>';
+}
+
 function renderTabla() {
   const supervisor = document.getElementById('filtroSupervisor').value;
   const agencia = document.getElementById('filtroAgencia').value;
@@ -188,6 +226,7 @@ function renderTabla() {
   );
 
   renderResumen(filtrados);
+  renderTecnicoDesviado(filtrados);
 
   const tbody = document.getElementById('tablaBody');
   const sinResultados = document.getElementById('sinResultados');
@@ -272,6 +311,32 @@ function dibujarLineChart(el, fechas, valores) {
   return true;
 }
 
+// Titular corto (una linea) que resume la tendencia, para entenderla de
+// un vistazo sin tener que leer el grafico en detalle. En Calidad, bajar
+// es mejorar (menos repetidos).
+function explicarTendencia(valores) {
+  const puntos = valores.filter((v) => v != null);
+  if (puntos.length < 2) return '';
+  const primero = puntos[0];
+  const ultimo = puntos[puntos.length - 1];
+  const min = Math.min(...puntos);
+  const max = Math.max(...puntos);
+  const diff = ultimo - primero;
+
+  let icono, texto, color;
+  if (Math.abs(diff) < 0.5) {
+    icono = '➡️'; texto = 'Se mantiene estable'; color = 'var(--warn)';
+  } else if (diff < 0) {
+    icono = '✅'; texto = 'Mejorando'; color = 'var(--ok)';
+  } else {
+    icono = '🔴'; texto = 'Empeorando'; color = 'var(--bad)';
+  }
+
+  return '<span style="color:' + color + ';">' + icono + ' ' + texto + ': '
+    + primero.toFixed(1) + '% → ' + ultimo.toFixed(1) + '%</span>'
+    + '<span style="font-weight:400; font-size:12.5px; color:var(--text-dim);"> (rango del mes: ' + min.toFixed(1) + '%–' + max.toFixed(1) + '%)</span>';
+}
+
 function renderEvolutivo() {
   const ev = DATA.evolutivoCalidad;
   const chartEl = document.getElementById('evolutivoChart');
@@ -303,6 +368,7 @@ function renderEvolutivo() {
 
   const ok = dibujarLineChart(chartEl, ev.fechas, valores);
   sinDatos.style.display = ok ? 'none' : 'block';
+  document.getElementById('evolutivoExplicacion').innerHTML = ok ? explicarTendencia(valores) : '';
 }
 
 document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); });
