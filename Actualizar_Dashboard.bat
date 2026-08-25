@@ -14,7 +14,7 @@ if errorlevel 1 (
 echo.
 echo ==^> Publicando en GitHub (supervisionenaccion-stack)...
 gh auth switch --hostname github.com --user supervisionenaccion-stack
-git add index.html
+git add index.html supervisor.html
 git commit -m "Actualizar portal %date% %time%"
 if errorlevel 1 (
     echo No hay cambios nuevos para publicar.

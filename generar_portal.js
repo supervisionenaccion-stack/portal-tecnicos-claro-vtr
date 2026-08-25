@@ -542,6 +542,27 @@ async function main() {
   fs.writeFileSync(outPath, html, "utf-8");
   console.log(`==> Generado: ${outPath}`);
 
+  // ---------- 6b. Generar supervisor.html (dashboard de equipos, publico, sin RUT) ----------
+  const templateSupPath = path.join(__dirname, "template-supervisor.html");
+  const templateSup = fs.readFileSync(templateSupPath, "utf-8");
+  const dataSupervisor = {
+    generadoEl: dataCompleta.generadoEl,
+    periodoCalidad: rangoCalidad.label,
+    periodoMatriz: rangoMatriz.label,
+    tecnicos: [...byRut.values()].map((t) => ({
+      nombre: t.nombre,
+      agencia: t.agencia,
+      supervisor: t.supervisor,
+      calidad: t.calidad,
+      derivaciones: t.derivaciones,
+      rgu: t.rgu,
+    })),
+  };
+  const htmlSup = templateSup.replace("__DATA_SUPERVISOR_JSON__", JSON.stringify(dataSupervisor));
+  const outSupPath = path.join(__dirname, "supervisor.html");
+  fs.writeFileSync(outSupPath, htmlSup, "utf-8");
+  console.log(`==> Generado: ${outSupPath}`);
+
   // ---------- 7. Generar Excel de credenciales (NO se sube a git) ----------
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Credenciales");

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Supervisores · Claro/VTR</title>
+<meta name="theme-color" content="#003c71">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#eef1f4; --panel:#ffffff; --panel-2:#f5f7f9; --border:#e0e5ea; --text:#22303f; --text-dim:#6b7a8c;
+    --cobra-navy:#003c71; --cobra-blue:#0071ce; --celeste:#29a9e0; --celeste-soft:#e8f6fd;
+    --ok:#1fa971; --ok-bg:#e2f6ee; --warn:#e2962e; --warn-bg:#fdf1e2; --bad:#e2523e; --bad-bg:#fce4e0;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; font-family:'Segoe UI', Arial, sans-serif; background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+  header.hero{
+    background:linear-gradient(120deg,#ffffff 0%,var(--celeste-soft) 55%,#dcf1fb 100%);
+    padding:28px 6vw 30px; position:relative; overflow:hidden; border-bottom:4px solid var(--celeste);
+  }
+  .brand-row{ display:flex; align-items:center; gap:18px; margin-bottom:18px; }
+  .brand-row img{ height:40px; }
+  .brand-divider{ width:1px; height:30px; background:var(--border); }
+  .eyebrow{ text-transform:uppercase; letter-spacing:.14em; font-size:12px; color:var(--celeste); font-weight:800; }
+  h1{ margin:0 0 6px; font-size:clamp(22px,4vw,30px); font-weight:800; letter-spacing:-0.01em; color:var(--cobra-navy); }
+  .subtitle{ color:#3a4a5c; font-size:14px; max-width:640px; line-height:1.5; }
+  .link-portal{ font-size:12.5px; color:var(--celeste); font-weight:700; text-decoration:none; }
+  .link-portal:hover{ text-decoration:underline; }
+
+  main{ padding:24px 6vw 60px; max-width:1100px; margin:0 auto; }
+  .panel{ background:var(--panel); border:1px solid var(--border); border-radius:14px; box-shadow:0 4px 14px rgba(20,50,80,.05); }
+
+  .controles{ display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; padding:18px 20px; margin-bottom:18px; }
+  .campo{ display:flex; flex-direction:column; gap:5px; min-width:220px; }
+  .campo label{ font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; }
+  .campo select, .campo input{ padding:9px 11px; border:1px solid var(--border); border-radius:8px; font-size:14.5px; font-family:inherit; background:#fff; }
+  .campo select:focus, .campo input:focus{ outline:2px solid var(--celeste); border-color:var(--celeste); }
+
+  .resumen-row{ display:flex; flex-wrap:wrap; gap:14px; margin-bottom:18px; }
+  .resumen-card{ flex:1; min-width:140px; padding:16px 18px; text-align:center; }
+  .resumen-card .num{ font-size:26px; font-weight:800; color:var(--cobra-navy); }
+  .resumen-card .lbl{ font-size:12px; color:var(--text-dim); margin-top:2px; }
+
+  .tabla-wrap{ overflow-x:auto; padding:4px; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; min-width:720px; }
+  thead th{ text-align:left; padding:12px 14px; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-dim); border-bottom:2px solid var(--border); white-space:nowrap; }
+  tbody td{ padding:11px 14px; border-bottom:1px solid var(--panel-2); }
+  tbody tr:hover{ background:var(--panel-2); }
+  td.num, th.num{ text-align:center; }
+  .valor-pill{ display:inline-block; padding:3px 10px; border-radius:20px; font-weight:700; font-size:12.5px; }
+  .valor-pill.ok{ background:var(--ok-bg); color:var(--ok); }
+  .valor-pill.warn{ background:var(--warn-bg); color:var(--warn); }
+  .valor-pill.bad{ background:var(--bad-bg); color:var(--bad); }
+  .valor-pill.na{ background:var(--panel-2); color:var(--text-dim); }
+  .sin-resultados{ padding:40px 20px; text-align:center; color:var(--text-dim); font-size:14px; }
+
+  footer{ text-align:center; padding:22px; color:var(--text-dim); font-size:11.5px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="brand-row">
+    <img src="logo-cobra.png" alt="Cobra">
+    <div class="brand-divider"></div>
+    <div class="eyebrow">Dashboard de Supervisores</div>
+  </div>
+  <h1>Mi Equipo</h1>
+  <div class="subtitle">Calidad, Derivaciones y Producción RGU de cada técnico, filtrado por equipo. <a class="link-portal" href="index.html">← Ir al portal de técnicos</a></div>
+</header>
+
+<main>
+  <div class="panel controles">
+    <div class="campo">
+      <label for="filtroSupervisor">Supervisor / Equipo</label>
+      <select id="filtroSupervisor"></select>
+    </div>
+    <div class="campo">
+      <label for="filtroAgencia">Agencia</label>
+      <select id="filtroAgencia"></select>
+    </div>
+    <div class="campo" style="flex:1;">
+      <label for="filtroBusqueda">Buscar técnico</label>
+      <input type="text" id="filtroBusqueda" placeholder="Nombre del técnico...">
+    </div>
+  </div>
+
+  <div class="resumen-row" id="resumenRow"></div>
+
+  <div class="panel tabla-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Técnico</th>
+          <th>Agencia</th>
+          <th>Supervisor</th>
+          <th class="num">Calidad (repetidos)</th>
+          <th class="num">Derivaciones</th>
+          <th class="num">Producción RGU</th>
+        </tr>
+      </thead>
+      <tbody id="tablaBody"></tbody>
+    </table>
+    <div class="sin-resultados" id="sinResultados" style="display:none;">No hay técnicos que coincidan con el filtro.</div>
+  </div>
+</main>
+
+<footer id="footerText"></footer>
+
+<script>
+const DATA = __DATA_SUPERVISOR_JSON__;
+
+document.getElementById('footerText').innerHTML =
+  'Calidad: ' + DATA.periodoCalidad + ' (mes completo) · Derivaciones/RGU: ' + DATA.periodoMatriz + ' (avance del mes) · Generado ' + DATA.generadoEl;
+
+const META_DERIVACIONES = 35;
+
+function estadoCalidad(pct, meta) {
+  if (pct == null) return 'na';
+  return pct <= meta ? 'ok' : 'bad';
+}
+function estadoDerivaciones(pct) {
+  if (pct == null) return 'na';
+  if (pct <= META_DERIVACIONES) return 'ok';
+  if (pct <= META_DERIVACIONES * 1.5) return 'warn';
+  return 'bad';
+}
+function estadoRgu(pct) {
+  if (pct == null) return 'na';
+  if (pct >= 100) return 'ok';
+  if (pct >= 80) return 'warn';
+  return 'bad';
+}
+function pill(pct, clase, sufijo) {
+  if (pct == null) return '<span class="valor-pill na">Sin datos</span>';
+  return '<span class="valor-pill ' + clase + '">' + pct.toFixed(1) + (sufijo || '%') + '</span>';
+}
+
+function llenarSelect(el, valores, etiquetaTodos) {
+  el.innerHTML = '<option value="">' + etiquetaTodos + '</option>' +
+    valores.map((v) => '<option value="' + v + '">' + v + '</option>').join('');
+}
+
+const supervisores = [...new Set(DATA.tecnicos.map((t) => t.supervisor).filter(Boolean))].sort();
+const agencias = [...new Set(DATA.tecnicos.map((t) => t.agencia).filter(Boolean))].sort();
+llenarSelect(document.getElementById('filtroSupervisor'), supervisores, 'Todos los supervisores');
+llenarSelect(document.getElementById('filtroAgencia'), agencias, 'Todas las agencias');
+
+function renderResumen(lista) {
+  const conCalidad = lista.filter((t) => t.calidad);
+  const conDeriv = lista.filter((t) => t.derivaciones);
+  const conRgu = lista.filter((t) => t.rgu);
+  const badCalidad = conCalidad.filter((t) => estadoCalidad(t.calidad.pctRepetidos, t.calidad.metaCalidad) === 'bad').length;
+  const badDeriv = conDeriv.filter((t) => estadoDerivaciones(t.derivaciones.pctDerivaciones) === 'bad').length;
+  const badRgu = conRgu.filter((t) => estadoRgu(t.rgu.pctCumplimiento) === 'bad').length;
+
+  document.getElementById('resumenRow').innerHTML = [
+    { num: lista.length, lbl: 'Técnicos en el filtro' },
+    { num: badCalidad + ' / ' + conCalidad.length, lbl: 'Calidad en foco prioritario' },
+    { num: badDeriv + ' / ' + conDeriv.length, lbl: 'Derivaciones en foco prioritario' },
+    { num: badRgu + ' / ' + conRgu.length, lbl: 'RGU en foco prioritario' },
+  ].map((c) => '<div class="panel resumen-card"><div class="num">' + c.num + '</div><div class="lbl">' + c.lbl + '</div></div>').join('');
+}
+
+function renderTabla() {
+  const supervisor = document.getElementById('filtroSupervisor').value;
+  const agencia = document.getElementById('filtroAgencia').value;
+  const busqueda = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
+
+  const filtrados = DATA.tecnicos.filter((t) =>
+    (!supervisor || t.supervisor === supervisor) &&
+    (!agencia || t.agencia === agencia) &&
+    (!busqueda || t.nombre.toLowerCase().includes(busqueda))
+  );
+
+  renderResumen(filtrados);
+
+  const tbody = document.getElementById('tablaBody');
+  const sinResultados = document.getElementById('sinResultados');
+
+  if (filtrados.length === 0) {
+    tbody.innerHTML = '';
+    sinResultados.style.display = 'block';
+    return;
+  }
+  sinResultados.style.display = 'none';
+
+  tbody.innerHTML = filtrados
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+    .map((t) => {
+      const calPct = t.calidad ? t.calidad.pctRepetidos : null;
+      const calClase = t.calidad ? estadoCalidad(calPct, t.calidad.metaCalidad) : 'na';
+      const derPct = t.derivaciones ? t.derivaciones.pctDerivaciones : null;
+      const derClase = t.derivaciones ? estadoDerivaciones(derPct) : 'na';
+      const rguPct = t.rgu ? t.rgu.pctCumplimiento : null;
+      const rguClase = t.rgu ? estadoRgu(rguPct) : 'na';
+      return '<tr>'
+        + '<td>' + t.nombre + '</td>'
+        + '<td>' + (t.agencia || '—') + '</td>'
+        + '<td>' + (t.supervisor || '—') + '</td>'
+        + '<td class="num">' + pill(calPct, calClase) + '</td>'
+        + '<td class="num">' + pill(derPct, derClase) + '</td>'
+        + '<td class="num">' + pill(rguPct, rguClase) + '</td>'
+        + '</tr>';
+    })
+    .join('');
+}
+
+document.getElementById('filtroSupervisor').addEventListener('change', renderTabla);
+document.getElementById('filtroAgencia').addEventListener('change', renderTabla);
+document.getElementById('filtroBusqueda').addEventListener('input', renderTabla);
+
+renderTabla();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+
+</body>
+</html>
