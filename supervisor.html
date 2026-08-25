@@ -39,6 +39,21 @@
   .campo select, .campo input{ padding:9px 11px; border:1px solid var(--border); border-radius:8px; font-size:14.5px; font-family:inherit; background:#fff; }
   .campo select:focus, .campo input:focus{ outline:2px solid var(--celeste); border-color:var(--celeste); }
 
+  .titulo-seccion{ margin:0 0 3px; font-size:15px; color:var(--cobra-navy); }
+  .explica-seccion{ margin:0 0 10px; font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+
+  th.clicable{ cursor:pointer; }
+  th.clicable:hover{ color:var(--cobra-blue); }
+  th.clicable .info-ico{ font-size:10px; margin-left:3px; opacity:.7; }
+
+  .modal-fondo{ display:none; position:fixed; inset:0; background:rgba(20,30,45,.45); z-index:50; align-items:center; justify-content:center; padding:20px; }
+  .modal-fondo.abierto{ display:flex; }
+  .modal-caja{ background:#fff; border-radius:14px; max-width:420px; width:100%; padding:24px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
+  .modal-caja h3{ margin:0 0 10px; font-size:16px; color:var(--cobra-navy); }
+  .modal-caja p{ margin:0; font-size:13.5px; line-height:1.6; color:var(--text); }
+  .modal-cerrar{ margin-top:18px; width:100%; padding:10px; border:none; border-radius:8px; background:var(--cobra-navy); color:#fff; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .modal-cerrar:hover{ background:var(--cobra-blue); }
+
   .resumen-row{ display:flex; flex-wrap:wrap; gap:14px; margin-bottom:18px; }
   .resumen-card{ flex:1; min-width:140px; padding:16px 18px; text-align:center; }
   .resumen-card .num{ font-size:26px; font-weight:800; color:var(--cobra-navy); }
@@ -93,10 +108,6 @@
       <label for="filtroSupervisor">Supervisor / Equipo</label>
       <select id="filtroSupervisor"></select>
     </div>
-    <div class="campo">
-      <label for="filtroAgencia">Agencia</label>
-      <select id="filtroAgencia"></select>
-    </div>
     <div class="campo" style="flex:1;">
       <label for="filtroBusqueda">Buscar técnico</label>
       <input type="text" id="filtroBusqueda" placeholder="Nombre del técnico...">
@@ -105,10 +116,12 @@
 
   <div class="ranking-row" id="rankingRow"></div>
 
+  <h2 class="titulo-seccion">Resumen del filtro actual</h2>
+  <p class="explica-seccion">Cuántos técnicos hay en tu selección y cuántos de ellos están en foco prioritario en cada indicador.</p>
   <div class="resumen-row" id="resumenRow"></div>
 
   <div class="panel" id="panelEvolutivo" style="padding:20px 22px; margin-bottom:18px;">
-    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad (repetidos) — <span id="evolutivoTitulo"></span></h2>
+    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad dentro del mes — <span id="evolutivoTitulo"></span></h2>
     <p class="frase-tendencia" id="evolutivoExplicacion" style="margin:0 0 14px; font-size:16px; font-weight:800; line-height:1.4;"></p>
     <div id="evolutivoChart"></div>
     <div class="sin-resultados" id="evolutivoSinDatos" style="display:none; padding:20px 0;">No hay días maduros suficientes para graficar todavía.</div>
@@ -119,6 +132,16 @@
     </p>
   </div>
 
+  <div class="panel" id="panelEvolutivoMensual" style="padding:20px 22px; margin-bottom:18px;">
+    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad mes a mes — <span id="mensualTitulo"></span></h2>
+    <p class="frase-tendencia" id="mensualExplicacion" style="margin:0 0 14px; font-size:16px; font-weight:800; line-height:1.4;"></p>
+    <div id="mensualChart"></div>
+    <div class="sin-resultados" id="mensualSinDatos" style="display:none; padding:20px 0;">No hay suficientes meses cerrados todavía.</div>
+    <p style="margin:12px 0 0; font-size:12px; color:var(--text-dim); line-height:1.5;">
+      % de repetidos de cada mes completo (no acumulado entre meses), desde enero hasta el último mes ya cerrado.
+    </p>
+  </div>
+
   <div class="panel tabla-wrap">
     <table>
       <thead>
@@ -126,9 +149,9 @@
           <th>Técnico</th>
           <th>Agencia</th>
           <th>Supervisor</th>
-          <th class="num">Calidad (repetidos)</th>
-          <th class="num">Derivaciones</th>
-          <th class="num">Producción RGU</th>
+          <th class="num clicable" onclick="mostrarInfo('calidad')">Calidad (repetidos)<span class="info-ico">ⓘ</span></th>
+          <th class="num clicable" onclick="mostrarInfo('derivaciones')">Derivaciones<span class="info-ico">ⓘ</span></th>
+          <th class="num clicable" onclick="mostrarInfo('rgu')">Producción RGU<span class="info-ico">ⓘ</span></th>
         </tr>
       </thead>
       <tbody id="tablaBody"></tbody>
@@ -137,10 +160,18 @@
   </div>
 </main>
 
+<div class="modal-fondo" id="modalInfo" onclick="if (event.target === this) cerrarInfo()">
+  <div class="modal-caja">
+    <h3 id="modalInfoTitulo"></h3>
+    <p id="modalInfoTexto"></p>
+    <button class="modal-cerrar" onclick="cerrarInfo()">Entendido</button>
+  </div>
+</div>
+
 <footer id="footerText"></footer>
 
 <script>
-const DATA = {"generadoEl":"24-08-2026, 8:35:49 p. m.","periodoCalidad":"julio de 2026","periodoMatriz":"1 al 22 de agosto de 2026","tecnicos":[{"nombre":"ELADIO ANDRES GUERRERO LEIVA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":62,"repetidos30Dias":4,"pctRepetidos":6.451612903225806,"metaCalidad":5.56},"derivaciones":{"qOrdenes":51,"qDerivaciones":19,"pctDerivaciones":37.254901960784316},"rgu":{"rguTotal":131.25,"rguCompletadaGsa":94,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":138.23529411764704}},{"nombre":"EUDIS JESUS ALDAMA MARIN","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":67,"repetidos30Dias":4,"pctRepetidos":5.970149253731343,"metaCalidad":5.62},"derivaciones":{"qOrdenes":55,"qDerivaciones":27,"pctDerivaciones":49.09090909090909},"rgu":{"rguTotal":103,"rguCompletadaGsa":65.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":90.625}},{"nombre":"SEBASTIAN SANTANA URRUTIA","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":46,"repetidos30Dias":5,"pctRepetidos":10.869565217391305,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"HERNAN TOMAS MARIN ORELLANA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":25,"repetidos30Dias":7,"pctRepetidos":28.000000000000004,"metaCalidad":5.56},"derivaciones":{"qOrdenes":30,"qDerivaciones":18,"pctDerivaciones":60},"rgu":{"rguTotal":70.75,"rguCompletadaGsa":31,"diasConGsa":10,"metaDiaria":4,"metaPeriodo":40,"pctCumplimiento":77.5}},{"nombre":"JONATHAN DIAZ CALDERON","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":51,"repetidos30Dias":2,"pctRepetidos":3.9215686274509802,"metaCalidad":5.62},"derivaciones":{"qOrdenes":25,"qDerivaciones":11,"pctDerivaciones":44},"rgu":{"rguTotal":79,"rguCompletadaGsa":46.5,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":64.58333333333334}},{"nombre":"XAVIER NATERA MARTINEZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":59,"repetidos30Dias":3,"pctRepetidos":5.084745762711865,"metaCalidad":5.62},"derivaciones":{"qOrdenes":29,"qDerivaciones":14,"pctDerivaciones":48.275862068965516},"rgu":{"rguTotal":97.75,"rguCompletadaGsa":52.5,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":77.20588235294117}},{"nombre":"VICTOR HUGO HUAMANI .","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":68,"repetidos30Dias":5,"pctRepetidos":7.352941176470589,"metaCalidad":5.62},"derivaciones":{"qOrdenes":26,"qDerivaciones":13,"pctDerivaciones":50},"rgu":{"rguTotal":84.25,"rguCompletadaGsa":51.75,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":76.10294117647058}},{"nombre":"ANGELA GABRIELA REYES ALVAREZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":26,"repetidos30Dias":3,"pctRepetidos":11.538461538461538,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"PAULA ANDREA RODRIGUEZ BAEZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":55,"repetidos30Dias":2,"pctRepetidos":3.6363636363636362,"metaCalidad":5.62},"derivaciones":{"qOrdenes":66,"qDerivaciones":33,"pctDerivaciones":50},"rgu":{"rguTotal":132.25,"rguCompletadaGsa":79.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":110.06944444444444}},{"nombre":"JOSE LUIS BURGOS LAGOS","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":61,"repetidos30Dias":0,"pctRepetidos":0,"metaCalidad":5.62},"derivaciones":{"qOrdenes":33,"qDerivaciones":11,"pctDerivaciones":33.33333333333333},"rgu":{"rguTotal":92.25,"rguCompletadaGsa":63.5,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":88.19444444444444}},{"nombre":"LUIS ROBERTO QUIROGA SEGUEL","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":47,"repetidos30Dias":8,"pctRepetidos":17.02127659574468,"metaCalidad":5.62},"derivaciones":{"qOrdenes":35,"qDerivaciones":15,"pctDerivaciones":42.857142857142854},"rgu":{"rguTotal":77,"rguCompletadaGsa":45.75,"diasConGsa":13,"metaDiaria":4,"metaPeriodo":52,"pctCumplimiento":87.98076923076923}},{"nombre":"CARLOS NICOLAS PLAZA LEIVA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":66,"repetidos30Dias":2,"pctRepetidos":3.0303030303030303,"metaCalidad":5.56},"derivaciones":{"qOrdenes":40,"qDerivaciones":14,"pctDerivaciones":35},"rgu":{"rguTotal":111,"rguCompletadaGsa":79.75,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":117.27941176470588}},{"nombre":"ALEJANDRO ADRIAN ALMAZABAL TORO","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":41,"repetidos30Dias":6,"pctRepetidos":14.634146341463413,"metaCalidad":5.56},"derivaciones":{"qOrdenes":45,"qDerivaciones":18,"pctDerivaciones":40},"rgu":{"rguTotal":119.75,"rguCompletadaGsa":81.75,"diasConGsa":16,"metaDiaria":4,"metaPeriodo":64,"pctCumplimiento":127.734375}},{"nombre":"MARCELO SEBASTIAN VASQUEZ SAEZ","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":31,"repetidos30Dias":2,"pctRepetidos":6.451612903225806,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"LUIS ROBERTO BAIGORRIA CORDOVA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":41,"repetidos30Dias":5,"pctRepetidos":12.195121951219512,"metaCalidad":5.56},"derivaciones":{"qOrdenes":25,"qDerivaciones":12,"pctDerivaciones":48},"rgu":{"rguTotal":74.25,"rguCompletadaGsa":49.25,"diasConGsa":13,"metaDiaria":4,"metaPeriodo":52,"pctCumplimiento":94.71153846153845}},{"nombre":"CRISTIAN STEVE GONZALEZ NAVARRO","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":72,"repetidos30Dias":4,"pctRepetidos":5.555555555555555,"metaCalidad":4.76},"derivaciones":{"qOrdenes":54,"qDerivaciones":19,"pctDerivaciones":35.18518518518518},"rgu":{"rguTotal":104,"rguCompletadaGsa":69.5,"diasConGsa":18,"metaDiaria":4.3,"metaPeriodo":77.39999999999999,"pctCumplimiento":89.79328165374679}},{"nombre":"ENZO ANDRES CASTILLO GONZALEZ","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":60,"repetidos30Dias":7,"pctRepetidos":11.666666666666666,"metaCalidad":5.62},"derivaciones":{"qOrdenes":5,"qDerivaciones":3,"pctDerivaciones":60},"rgu":{"rguTotal":13.25,"rguCompletadaGsa":7.25,"diasConGsa":4,"metaDiaria":4,"metaPeriodo":16,"pctCumplimiento":45.3125}},{"nombre":"ANDRES EDUARDO RODRIGUEZ BERMEDO","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":73,"repetidos30Dias":5,"pctRepetidos":6.8493150684931505,"metaCalidad":5.62},"derivaciones":{"qOrdenes":41,"qDerivaciones":11,"pctDerivaciones":26.82926829268293},"rgu":{"rguTotal":98.5,"rguCompletadaGsa":67,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":98.52941176470588}},{"nombre":"MARCO ALEXANDER BENITEZ FERNANDEZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":58,"repetidos30Dias":3,"pctRepetidos":5.172413793103448,"metaCalidad":5.62},"derivaciones":{"qOrdenes":47,"qDerivaciones":16,"pctDerivaciones":34.04255319148936},"rgu":{"rguTotal":93,"rguCompletadaGsa":56.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":78.125}},{"nombre":"HECTOR REYES OLMOS","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":72,"repetidos30Dias":7,"pctRepetidos":9.722222222222223,"metaCalidad":5.56},"derivaciones":{"qOrdenes":54,"qDerivaciones":22,"pctDerivaciones":40.74074074074074},"rgu":{"rguTotal":127,"rguCompletadaGsa":88.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":122.56944444444444}},{"nombre":"MIGUEL LEMUS RIVERA","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":46,"repetidos30Dias":4,"pctRepetidos":8.695652173913043,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"BRAULIO DANILO DIAZ CORNEJO","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":43,"repetidos30Dias":4,"pctRepetidos":9.30232558139535,"metaCalidad":5.56},"derivaciones":{"qOrdenes":23,"qDerivaciones":8,"pctDerivaciones":34.78260869565217},"rgu":{"rguTotal":74.25,"rguCompletadaGsa":53.25,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":88.75}},{"nombre":"BENJAMIN ALEJANDRO PEREZ POVEDA","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":46,"repetidos30Dias":3,"pctRepetidos":6.521739130434782,"metaCalidad":5.62},"derivaciones":{"qOrdenes":27,"qDerivaciones":13,"pctDerivaciones":48.148148148148145},"rgu":{"rguTotal":71.75,"rguCompletadaGsa":46.5,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":68.38235294117648}},{"nombre":"JUAN PABLO CACERES SOBARZO","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":38,"repetidos30Dias":7,"pctRepetidos":18.421052631578945,"metaCalidad":5.56},"derivaciones":{"qOrdenes":24,"qDerivaciones":9,"pctDerivaciones":37.5},"rgu":{"rguTotal":83.5,"rguCompletadaGsa":54.75,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":91.25}},{"nombre":"ANIBAL EDUARDO BERROCAL BAHAMONDE","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":73,"repetidos30Dias":6,"pctRepetidos":8.21917808219178,"metaCalidad":4.76},"derivaciones":{"qOrdenes":45,"qDerivaciones":19,"pctDerivaciones":42.22222222222222},"rgu":{"rguTotal":92.75,"rguCompletadaGsa":65,"diasConGsa":15,"metaDiaria":4.3,"metaPeriodo":64.5,"pctCumplimiento":100.7751937984496}},{"nombre":"MIGUEL ALBERTO ARACENA VERGARA","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":84,"repetidos30Dias":8,"pctRepetidos":9.523809523809524,"metaCalidad":4.76},"derivaciones":{"qOrdenes":69,"qDerivaciones":30,"pctDerivaciones":43.47826086956522},"rgu":{"rguTotal":147.25,"rguCompletadaGsa":94.5,"diasConGsa":18,"metaDiaria":4.3,"metaPeriodo":77.39999999999999,"pctCumplimiento":122.09302325581397}},{"nombre":"JOSE LUIS CHOQUE BLANCO","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":49,"repetidos30Dias":4,"pctRepetidos":8.16326530612245,"metaCalidad":4.76},"derivaciones":null,"rgu":null},{"nombre":"JORGE LUIS REYES TOLOZA","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":40,"repetidos30Dias":2,"pctRepetidos":5,"metaCalidad":5.62},"derivaciones":{"qOrdenes":32,"qDerivaciones":18,"pctDerivaciones":56.25},"rgu":{"rguTotal":70.75,"rguCompletadaGsa":29.5,"diasConGsa":16,"metaDiaria":4,"metaPeriodo":64,"pctCumplimiento":46.09375}},{"nombre":"PEDRO CRISTOBAL PINTO CASTILLO","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":83,"repetidos30Dias":6,"pctRepetidos":7.228915662650602,"metaCalidad":4.76},"derivaciones":{"qOrdenes":54,"qDerivaciones":19,"pctDerivaciones":35.18518518518518},"rgu":{"rguTotal":109.5,"rguCompletadaGsa":68.5,"diasConGsa":17,"metaDiaria":4.3,"metaPeriodo":73.1,"pctCumplimiento":93.70725034199727}},{"nombre":"PATRICIO ALBERTO FIGUEROA MURA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":28,"repetidos30Dias":1,"pctRepetidos":3.571428571428571,"metaCalidad":5.56},"derivaciones":null,"rgu":null},{"nombre":"RODRIGO ALONSO GONZALEZ SANTIBAÑEZ","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":32,"repetidos30Dias":2,"pctRepetidos":6.25,"metaCalidad":4.76},"derivaciones":{"qOrdenes":43,"qDerivaciones":20,"pctDerivaciones":46.51162790697674},"rgu":{"rguTotal":93.75,"rguCompletadaGsa":51.25,"diasConGsa":16,"metaDiaria":4.3,"metaPeriodo":68.8,"pctCumplimiento":74.49127906976744}},{"nombre":"FERNANDO ALEXIS SANCHEZ ZAMORA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":50,"repetidos30Dias":7,"pctRepetidos":14.000000000000002,"metaCalidad":5.56},"derivaciones":{"qOrdenes":26,"qDerivaciones":9,"pctDerivaciones":34.61538461538461},"rgu":{"rguTotal":79,"rguCompletadaGsa":59.25,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":87.13235294117648}},{"nombre":"DARIO GUSTAVO CHAMBE ALCON","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":54,"repetidos30Dias":4,"pctRepetidos":7.4074074074074066,"metaCalidad":4.76},"derivaciones":{"qOrdenes":40,"qDerivaciones":13,"pctDerivaciones":32.5},"rgu":{"rguTotal":93.5,"rguCompletadaGsa":69,"diasConGsa":17,"metaDiaria":4.3,"metaPeriodo":73.1,"pctCumplimiento":94.39124487004105}},{"nombre":"TOMAS SEBASTIAN PONCE ARANCIBIA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":77,"repetidos30Dias":4,"pctRepetidos":5.194805194805195,"metaCalidad":5.56},"derivaciones":{"qOrdenes":55,"qDerivaciones":21,"pctDerivaciones":38.18181818181819},"rgu":{"rguTotal":139.75,"rguCompletadaGsa":93.75,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":130.20833333333331}},{"nombre":"ALVARO IVAN HERRERA SALINAS","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":41,"repetidos30Dias":5,"pctRepetidos":12.195121951219512,"metaCalidad":5.62},"derivaciones":{"qOrdenes":33,"qDerivaciones":14,"pctDerivaciones":42.42424242424242},"rgu":{"rguTotal":78.5,"rguCompletadaGsa":48,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":66.66666666666666}},{"nombre":"CRISTOPHER CARDENAS MONFIL","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":70,"repetidos30Dias":3,"pctRepetidos":4.285714285714286,"metaCalidad":5.56},"derivaciones":{"qOrdenes":50,"qDerivaciones":16,"pctDerivaciones":32},"rgu":{"rguTotal":129.75,"rguCompletadaGsa":95.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":132.29166666666669}},{"nombre":"HECTOR SANTIS MEZA","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":null,"derivaciones":{"qOrdenes":38,"qDerivaciones":13,"pctDerivaciones":34.21052631578947},"rgu":{"rguTotal":69,"rguCompletadaGsa":43.25,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":72.08333333333333}}],"evolutivoCalidad":{"fechas":["2026-07-01","2026-07-02","2026-07-03","2026-07-04","2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10","2026-07-11","2026-07-13","2026-07-14","2026-07-15","2026-07-17","2026-07-18","2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24","2026-07-25"],"todos":[9.5,8.6,7.7,7.1,7.3,8.4,8.8,8.6,8.6,8.6,8.5,8.4,8.3,8.2,8.5,8.7,8.7,8.6,8.4,8.5,8.3],"porSupervisor":{"JULIO ALEJANDRO CABRERA AROSTICA":[10.3,11.3,7.5,7.2,8.5,9.4,10.2,9.5,10.1,10.2,10.3,9.5,8.7,8.7,8.3,8.4,8.4,8.8,8.4,8.9,8.9],"ROLANDO ANTONIO MONTOYA URBINA":[12,9.3,6,6.5,6.4,7.6,6.8,6.1,6.4,5.9,5.3,6.5,6.5,7,8.3,7.9,7.8,7.4,7,7,6.8],"PATRICIO ANDRES ARIAS BENITO":[5.9,5.3,6.8,6.1,6.9,7.2,7.5,8.9,8.6,9.8,9.3,8.6,8.8,8.3,8.2,9,8.8,8.7,8.3,8.3,7.9],"DANILO ENRIQUE OJEDA MINO":[7.7,7.1,12.2,9.4,7.2,9.6,10.7,10.2,9.2,8.3,8.6,8.8,9.4,9,9.3,9.6,9.9,9.7,9.9,9.9,9.7]},"porAgencia":{"V REGION":[10.3,11.3,7.5,7.2,8.5,9.4,10.2,9.5,10.1,10.2,10.3,9.5,8.7,8.7,8.3,8.4,8.4,8.8,8.4,8.9,8.9],"SANTIAGO":[10.5,8.5,8.3,7.5,6.7,8.4,8.5,7.9,7.6,6.9,6.7,7.5,7.8,7.9,8.8,8.7,8.8,8.4,8.3,8.3,8.1],"ARICA":[5.9,5.3,6.8,6.1,6.9,7.2,7.5,8.9,8.6,9.8,9.3,8.6,8.8,8.3,8.2,9,8.8,8.7,8.3,8.3,7.9]}}};
+const DATA = {"generadoEl":"24-08-2026, 8:46:37 p. m.","periodoCalidad":"julio de 2026","periodoMatriz":"1 al 22 de agosto de 2026","tecnicos":[{"nombre":"ELADIO ANDRES GUERRERO LEIVA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":62,"repetidos30Dias":4,"pctRepetidos":6.451612903225806,"metaCalidad":5.56},"derivaciones":{"qOrdenes":51,"qDerivaciones":19,"pctDerivaciones":37.254901960784316},"rgu":{"rguTotal":131.25,"rguCompletadaGsa":94,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":138.23529411764704}},{"nombre":"EUDIS JESUS ALDAMA MARIN","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":67,"repetidos30Dias":4,"pctRepetidos":5.970149253731343,"metaCalidad":5.62},"derivaciones":{"qOrdenes":55,"qDerivaciones":27,"pctDerivaciones":49.09090909090909},"rgu":{"rguTotal":103,"rguCompletadaGsa":65.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":90.625}},{"nombre":"SEBASTIAN SANTANA URRUTIA","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":46,"repetidos30Dias":5,"pctRepetidos":10.869565217391305,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"HERNAN TOMAS MARIN ORELLANA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":25,"repetidos30Dias":7,"pctRepetidos":28.000000000000004,"metaCalidad":5.56},"derivaciones":{"qOrdenes":30,"qDerivaciones":18,"pctDerivaciones":60},"rgu":{"rguTotal":70.75,"rguCompletadaGsa":31,"diasConGsa":10,"metaDiaria":4,"metaPeriodo":40,"pctCumplimiento":77.5}},{"nombre":"JONATHAN DIAZ CALDERON","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":51,"repetidos30Dias":2,"pctRepetidos":3.9215686274509802,"metaCalidad":5.62},"derivaciones":{"qOrdenes":25,"qDerivaciones":11,"pctDerivaciones":44},"rgu":{"rguTotal":79,"rguCompletadaGsa":46.5,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":64.58333333333334}},{"nombre":"XAVIER NATERA MARTINEZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":59,"repetidos30Dias":3,"pctRepetidos":5.084745762711865,"metaCalidad":5.62},"derivaciones":{"qOrdenes":29,"qDerivaciones":14,"pctDerivaciones":48.275862068965516},"rgu":{"rguTotal":97.75,"rguCompletadaGsa":52.5,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":77.20588235294117}},{"nombre":"VICTOR HUGO HUAMANI .","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":68,"repetidos30Dias":5,"pctRepetidos":7.352941176470589,"metaCalidad":5.62},"derivaciones":{"qOrdenes":26,"qDerivaciones":13,"pctDerivaciones":50},"rgu":{"rguTotal":84.25,"rguCompletadaGsa":51.75,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":76.10294117647058}},{"nombre":"ANGELA GABRIELA REYES ALVAREZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":26,"repetidos30Dias":3,"pctRepetidos":11.538461538461538,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"PAULA ANDREA RODRIGUEZ BAEZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":55,"repetidos30Dias":2,"pctRepetidos":3.6363636363636362,"metaCalidad":5.62},"derivaciones":{"qOrdenes":66,"qDerivaciones":33,"pctDerivaciones":50},"rgu":{"rguTotal":132.25,"rguCompletadaGsa":79.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":110.06944444444444}},{"nombre":"JOSE LUIS BURGOS LAGOS","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":61,"repetidos30Dias":0,"pctRepetidos":0,"metaCalidad":5.62},"derivaciones":{"qOrdenes":33,"qDerivaciones":11,"pctDerivaciones":33.33333333333333},"rgu":{"rguTotal":92.25,"rguCompletadaGsa":63.5,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":88.19444444444444}},{"nombre":"LUIS ROBERTO QUIROGA SEGUEL","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":47,"repetidos30Dias":8,"pctRepetidos":17.02127659574468,"metaCalidad":5.62},"derivaciones":{"qOrdenes":35,"qDerivaciones":15,"pctDerivaciones":42.857142857142854},"rgu":{"rguTotal":77,"rguCompletadaGsa":45.75,"diasConGsa":13,"metaDiaria":4,"metaPeriodo":52,"pctCumplimiento":87.98076923076923}},{"nombre":"CARLOS NICOLAS PLAZA LEIVA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":66,"repetidos30Dias":2,"pctRepetidos":3.0303030303030303,"metaCalidad":5.56},"derivaciones":{"qOrdenes":40,"qDerivaciones":14,"pctDerivaciones":35},"rgu":{"rguTotal":111,"rguCompletadaGsa":79.75,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":117.27941176470588}},{"nombre":"ALEJANDRO ADRIAN ALMAZABAL TORO","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":41,"repetidos30Dias":6,"pctRepetidos":14.634146341463413,"metaCalidad":5.56},"derivaciones":{"qOrdenes":45,"qDerivaciones":18,"pctDerivaciones":40},"rgu":{"rguTotal":119.75,"rguCompletadaGsa":81.75,"diasConGsa":16,"metaDiaria":4,"metaPeriodo":64,"pctCumplimiento":127.734375}},{"nombre":"MARCELO SEBASTIAN VASQUEZ SAEZ","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":31,"repetidos30Dias":2,"pctRepetidos":6.451612903225806,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"LUIS ROBERTO BAIGORRIA CORDOVA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":41,"repetidos30Dias":5,"pctRepetidos":12.195121951219512,"metaCalidad":5.56},"derivaciones":{"qOrdenes":25,"qDerivaciones":12,"pctDerivaciones":48},"rgu":{"rguTotal":74.25,"rguCompletadaGsa":49.25,"diasConGsa":13,"metaDiaria":4,"metaPeriodo":52,"pctCumplimiento":94.71153846153845}},{"nombre":"CRISTIAN STEVE GONZALEZ NAVARRO","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":72,"repetidos30Dias":4,"pctRepetidos":5.555555555555555,"metaCalidad":4.76},"derivaciones":{"qOrdenes":54,"qDerivaciones":19,"pctDerivaciones":35.18518518518518},"rgu":{"rguTotal":104,"rguCompletadaGsa":69.5,"diasConGsa":18,"metaDiaria":4.3,"metaPeriodo":77.39999999999999,"pctCumplimiento":89.79328165374679}},{"nombre":"ENZO ANDRES CASTILLO GONZALEZ","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":60,"repetidos30Dias":7,"pctRepetidos":11.666666666666666,"metaCalidad":5.62},"derivaciones":{"qOrdenes":5,"qDerivaciones":3,"pctDerivaciones":60},"rgu":{"rguTotal":13.25,"rguCompletadaGsa":7.25,"diasConGsa":4,"metaDiaria":4,"metaPeriodo":16,"pctCumplimiento":45.3125}},{"nombre":"ANDRES EDUARDO RODRIGUEZ BERMEDO","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":73,"repetidos30Dias":5,"pctRepetidos":6.8493150684931505,"metaCalidad":5.62},"derivaciones":{"qOrdenes":41,"qDerivaciones":11,"pctDerivaciones":26.82926829268293},"rgu":{"rguTotal":98.5,"rguCompletadaGsa":67,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":98.52941176470588}},{"nombre":"MARCO ALEXANDER BENITEZ FERNANDEZ","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":58,"repetidos30Dias":3,"pctRepetidos":5.172413793103448,"metaCalidad":5.62},"derivaciones":{"qOrdenes":47,"qDerivaciones":16,"pctDerivaciones":34.04255319148936},"rgu":{"rguTotal":93,"rguCompletadaGsa":56.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":78.125}},{"nombre":"HECTOR REYES OLMOS","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":72,"repetidos30Dias":7,"pctRepetidos":9.722222222222223,"metaCalidad":5.56},"derivaciones":{"qOrdenes":54,"qDerivaciones":22,"pctDerivaciones":40.74074074074074},"rgu":{"rguTotal":127,"rguCompletadaGsa":88.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":122.56944444444444}},{"nombre":"MIGUEL LEMUS RIVERA","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":46,"repetidos30Dias":4,"pctRepetidos":8.695652173913043,"metaCalidad":5.62},"derivaciones":null,"rgu":null},{"nombre":"BRAULIO DANILO DIAZ CORNEJO","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":43,"repetidos30Dias":4,"pctRepetidos":9.30232558139535,"metaCalidad":5.56},"derivaciones":{"qOrdenes":23,"qDerivaciones":8,"pctDerivaciones":34.78260869565217},"rgu":{"rguTotal":74.25,"rguCompletadaGsa":53.25,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":88.75}},{"nombre":"BENJAMIN ALEJANDRO PEREZ POVEDA","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":46,"repetidos30Dias":3,"pctRepetidos":6.521739130434782,"metaCalidad":5.62},"derivaciones":{"qOrdenes":27,"qDerivaciones":13,"pctDerivaciones":48.148148148148145},"rgu":{"rguTotal":71.75,"rguCompletadaGsa":46.5,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":68.38235294117648}},{"nombre":"JUAN PABLO CACERES SOBARZO","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":38,"repetidos30Dias":7,"pctRepetidos":18.421052631578945,"metaCalidad":5.56},"derivaciones":{"qOrdenes":24,"qDerivaciones":9,"pctDerivaciones":37.5},"rgu":{"rguTotal":83.5,"rguCompletadaGsa":54.75,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":91.25}},{"nombre":"ANIBAL EDUARDO BERROCAL BAHAMONDE","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":73,"repetidos30Dias":6,"pctRepetidos":8.21917808219178,"metaCalidad":4.76},"derivaciones":{"qOrdenes":45,"qDerivaciones":19,"pctDerivaciones":42.22222222222222},"rgu":{"rguTotal":92.75,"rguCompletadaGsa":65,"diasConGsa":15,"metaDiaria":4.3,"metaPeriodo":64.5,"pctCumplimiento":100.7751937984496}},{"nombre":"MIGUEL ALBERTO ARACENA VERGARA","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":84,"repetidos30Dias":8,"pctRepetidos":9.523809523809524,"metaCalidad":4.76},"derivaciones":{"qOrdenes":69,"qDerivaciones":30,"pctDerivaciones":43.47826086956522},"rgu":{"rguTotal":147.25,"rguCompletadaGsa":94.5,"diasConGsa":18,"metaDiaria":4.3,"metaPeriodo":77.39999999999999,"pctCumplimiento":122.09302325581397}},{"nombre":"JOSE LUIS CHOQUE BLANCO","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":49,"repetidos30Dias":4,"pctRepetidos":8.16326530612245,"metaCalidad":4.76},"derivaciones":null,"rgu":null},{"nombre":"JORGE LUIS REYES TOLOZA","agencia":"SANTIAGO","supervisor":"DANILO ENRIQUE OJEDA MINO","calidad":{"totalOrdenes":40,"repetidos30Dias":2,"pctRepetidos":5,"metaCalidad":5.62},"derivaciones":{"qOrdenes":32,"qDerivaciones":18,"pctDerivaciones":56.25},"rgu":{"rguTotal":70.75,"rguCompletadaGsa":29.5,"diasConGsa":16,"metaDiaria":4,"metaPeriodo":64,"pctCumplimiento":46.09375}},{"nombre":"PEDRO CRISTOBAL PINTO CASTILLO","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":83,"repetidos30Dias":6,"pctRepetidos":7.228915662650602,"metaCalidad":4.76},"derivaciones":{"qOrdenes":54,"qDerivaciones":19,"pctDerivaciones":35.18518518518518},"rgu":{"rguTotal":109.5,"rguCompletadaGsa":68.5,"diasConGsa":17,"metaDiaria":4.3,"metaPeriodo":73.1,"pctCumplimiento":93.70725034199727}},{"nombre":"PATRICIO ALBERTO FIGUEROA MURA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":28,"repetidos30Dias":1,"pctRepetidos":3.571428571428571,"metaCalidad":5.56},"derivaciones":null,"rgu":null},{"nombre":"RODRIGO ALONSO GONZALEZ SANTIBAÑEZ","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":32,"repetidos30Dias":2,"pctRepetidos":6.25,"metaCalidad":4.76},"derivaciones":{"qOrdenes":43,"qDerivaciones":20,"pctDerivaciones":46.51162790697674},"rgu":{"rguTotal":93.75,"rguCompletadaGsa":51.25,"diasConGsa":16,"metaDiaria":4.3,"metaPeriodo":68.8,"pctCumplimiento":74.49127906976744}},{"nombre":"FERNANDO ALEXIS SANCHEZ ZAMORA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":50,"repetidos30Dias":7,"pctRepetidos":14.000000000000002,"metaCalidad":5.56},"derivaciones":{"qOrdenes":26,"qDerivaciones":9,"pctDerivaciones":34.61538461538461},"rgu":{"rguTotal":79,"rguCompletadaGsa":59.25,"diasConGsa":17,"metaDiaria":4,"metaPeriodo":68,"pctCumplimiento":87.13235294117648}},{"nombre":"DARIO GUSTAVO CHAMBE ALCON","agencia":"ARICA","supervisor":"PATRICIO ANDRES ARIAS BENITO","calidad":{"totalOrdenes":54,"repetidos30Dias":4,"pctRepetidos":7.4074074074074066,"metaCalidad":4.76},"derivaciones":{"qOrdenes":40,"qDerivaciones":13,"pctDerivaciones":32.5},"rgu":{"rguTotal":93.5,"rguCompletadaGsa":69,"diasConGsa":17,"metaDiaria":4.3,"metaPeriodo":73.1,"pctCumplimiento":94.39124487004105}},{"nombre":"TOMAS SEBASTIAN PONCE ARANCIBIA","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":77,"repetidos30Dias":4,"pctRepetidos":5.194805194805195,"metaCalidad":5.56},"derivaciones":{"qOrdenes":55,"qDerivaciones":21,"pctDerivaciones":38.18181818181819},"rgu":{"rguTotal":139.75,"rguCompletadaGsa":93.75,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":130.20833333333331}},{"nombre":"ALVARO IVAN HERRERA SALINAS","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":{"totalOrdenes":41,"repetidos30Dias":5,"pctRepetidos":12.195121951219512,"metaCalidad":5.62},"derivaciones":{"qOrdenes":33,"qDerivaciones":14,"pctDerivaciones":42.42424242424242},"rgu":{"rguTotal":78.5,"rguCompletadaGsa":48,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":66.66666666666666}},{"nombre":"CRISTOPHER CARDENAS MONFIL","agencia":"V REGION","supervisor":"JULIO ALEJANDRO CABRERA AROSTICA","calidad":{"totalOrdenes":70,"repetidos30Dias":3,"pctRepetidos":4.285714285714286,"metaCalidad":5.56},"derivaciones":{"qOrdenes":50,"qDerivaciones":16,"pctDerivaciones":32},"rgu":{"rguTotal":129.75,"rguCompletadaGsa":95.25,"diasConGsa":18,"metaDiaria":4,"metaPeriodo":72,"pctCumplimiento":132.29166666666669}},{"nombre":"HECTOR SANTIS MEZA","agencia":"SANTIAGO","supervisor":"ROLANDO ANTONIO MONTOYA URBINA","calidad":null,"derivaciones":{"qOrdenes":38,"qDerivaciones":13,"pctDerivaciones":34.21052631578947},"rgu":{"rguTotal":69,"rguCompletadaGsa":43.25,"diasConGsa":15,"metaDiaria":4,"metaPeriodo":60,"pctCumplimiento":72.08333333333333}}],"evolutivoCalidad":{"fechas":["2026-07-01","2026-07-02","2026-07-03","2026-07-04","2026-07-06","2026-07-07","2026-07-08","2026-07-09","2026-07-10","2026-07-11","2026-07-13","2026-07-14","2026-07-15","2026-07-17","2026-07-18","2026-07-20","2026-07-21","2026-07-22","2026-07-23","2026-07-24","2026-07-25"],"todos":[9.5,8.6,7.7,7.1,7.3,8.4,8.8,8.6,8.6,8.6,8.5,8.4,8.3,8.2,8.5,8.7,8.7,8.6,8.4,8.5,8.3],"porSupervisor":{"JULIO ALEJANDRO CABRERA AROSTICA":[10.3,11.3,7.5,7.2,8.5,9.4,10.2,9.5,10.1,10.2,10.3,9.5,8.7,8.7,8.3,8.4,8.4,8.8,8.4,8.9,8.9],"ROLANDO ANTONIO MONTOYA URBINA":[12,9.3,6,6.5,6.4,7.6,6.8,6.1,6.4,5.9,5.3,6.5,6.5,7,8.3,7.9,7.8,7.4,7,7,6.8],"PATRICIO ANDRES ARIAS BENITO":[5.9,5.3,6.8,6.1,6.9,7.2,7.5,8.9,8.6,9.8,9.3,8.6,8.8,8.3,8.2,9,8.8,8.7,8.3,8.3,7.9],"DANILO ENRIQUE OJEDA MINO":[7.7,7.1,12.2,9.4,7.2,9.6,10.7,10.2,9.2,8.3,8.6,8.8,9.4,9,9.3,9.6,9.9,9.7,9.9,9.9,9.7]}},"evolutivoMensual":{"meses":["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07"],"todos":[8.7,8.9,7.7,7.1,7,7.2,8],"porSupervisor":{"DANILO ENRIQUE OJEDA MINO":[12.4,12.3,10,8.6,7.8,9.9,8.9],"JULIO ALEJANDRO CABRERA AROSTICA":[9.8,11.3,8.3,6.8,8.6,8,9.3],"ROLANDO ANTONIO MONTOYA URBINA":[7.3,8.4,6.4,6.3,6.2,5.6,5.8],"PATRICIO ANTONIO POBLETE POBLETE":[7.9,8.2,9.2,6.7,0,null,null],"PATRICIO ANDRES ARIAS BENITO":[5,4.7,8,8.5,7.4,6,7.6],"MANUEL ALEJANDRO FLORES RIVERA":[4.7,1.5,4.1,4.9,1.2,8.3,null]}}};
 
 document.getElementById('footerText').innerHTML =
   'Calidad: ' + DATA.periodoCalidad + ' (mes completo) · Derivaciones/RGU: ' + DATA.periodoMatriz + ' (avance del mes) · Generado ' + DATA.generadoEl;
@@ -174,9 +205,7 @@ function llenarSelect(el, valores, etiquetaTodos) {
 }
 
 const supervisores = [...new Set(DATA.tecnicos.map((t) => t.supervisor).filter(Boolean))].sort();
-const agencias = [...new Set(DATA.tecnicos.map((t) => t.agencia).filter(Boolean))].sort();
 llenarSelect(document.getElementById('filtroSupervisor'), supervisores, 'Todos los supervisores');
-llenarSelect(document.getElementById('filtroAgencia'), agencias, 'Todas las agencias');
 
 function renderResumen(lista) {
   const conCalidad = lista.filter((t) => t.calidad);
@@ -232,12 +261,10 @@ function renderRanking(lista) {
 
 function renderTabla() {
   const supervisor = document.getElementById('filtroSupervisor').value;
-  const agencia = document.getElementById('filtroAgencia').value;
   const busqueda = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
 
   const filtrados = DATA.tecnicos.filter((t) =>
     (!supervisor || t.supervisor === supervisor) &&
-    (!agencia || t.agencia === agencia) &&
     (!busqueda || t.nombre.toLowerCase().includes(busqueda))
   );
 
@@ -280,7 +307,14 @@ function formatFechaCorta(iso) {
   return d + '/' + m;
 }
 
-function dibujarLineChart(el, fechas, valores) {
+function formatMesCorto(iso) {
+  const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const [, m] = iso.split('-');
+  return MESES[parseInt(m, 10) - 1] || iso;
+}
+
+function dibujarLineChart(el, fechas, valores, formatLabel) {
+  formatLabel = formatLabel || formatFechaCorta;
   const puntos = valores.map((v, i) => ({ x: i, v })).filter((p) => p.v != null);
   if (puntos.length < 2) {
     el.innerHTML = '';
@@ -309,9 +343,9 @@ function dibujarLineChart(el, fechas, valores) {
       + '<text x="' + (padL - 8) + '" y="' + (y + 4).toFixed(1) + '" font-size="10" fill="#6b7a8c" text-anchor="end">' + v.toFixed(0) + '%</text>';
   }).join('');
 
-  const idxLabels = n <= 1 ? [0] : [0, Math.floor((n - 1) / 2), n - 1];
+  const idxLabels = n <= 9 ? [...Array(n).keys()] : [0, Math.floor((n - 1) / 2), n - 1];
   const xLabels = [...new Set(idxLabels)].map((i) =>
-    '<text x="' + xAt(i).toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="#6b7a8c" text-anchor="middle">' + formatFechaCorta(fechas[i]) + '</text>'
+    '<text x="' + xAt(i).toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="#6b7a8c" text-anchor="middle">' + formatLabel(fechas[i]) + '</text>'
   ).join('');
 
   const ultimo = puntos[puntos.length - 1];
@@ -367,15 +401,11 @@ function renderEvolutivo() {
   }
 
   const supervisor = document.getElementById('filtroSupervisor').value;
-  const agencia = document.getElementById('filtroAgencia').value;
 
   let valores, titulo;
   if (supervisor && ev.porSupervisor[supervisor]) {
     valores = ev.porSupervisor[supervisor];
     titulo = supervisor;
-  } else if (agencia && ev.porAgencia[agencia]) {
-    valores = ev.porAgencia[agencia];
-    titulo = agencia;
   } else {
     valores = ev.todos;
     titulo = 'Todos los equipos';
@@ -387,12 +417,78 @@ function renderEvolutivo() {
   document.getElementById('evolutivoExplicacion').innerHTML = ok ? explicarTendencia(valores) : '';
 }
 
-document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); });
-document.getElementById('filtroAgencia').addEventListener('change', () => { renderTabla(); renderEvolutivo(); });
+function renderEvolutivoMensual() {
+  const ev = DATA.evolutivoMensual;
+  const chartEl = document.getElementById('mensualChart');
+  const sinDatos = document.getElementById('mensualSinDatos');
+
+  if (!ev || !ev.meses || ev.meses.length === 0) {
+    chartEl.innerHTML = '';
+    sinDatos.style.display = 'block';
+    document.getElementById('mensualTitulo').textContent = 'sin datos';
+    return;
+  }
+
+  const supervisor = document.getElementById('filtroSupervisor').value;
+
+  let valores, titulo;
+  if (supervisor && ev.porSupervisor[supervisor]) {
+    valores = ev.porSupervisor[supervisor];
+    titulo = supervisor;
+  } else {
+    valores = ev.todos;
+    titulo = 'Todos los equipos';
+  }
+  document.getElementById('mensualTitulo').textContent = titulo;
+
+  const ok = dibujarLineChart(chartEl, ev.meses, valores, formatMesCorto);
+  sinDatos.style.display = ok ? 'none' : 'block';
+  document.getElementById('mensualExplicacion').innerHTML = ok ? explicarTendencia(valores) : '';
+}
+
+// Explicaciones que aparecen al hacer clic en cada encabezado de la tabla.
+const INFO_METRICAS = {
+  calidad: {
+    titulo: 'Calidad (repetidos)',
+    texto: 'Mide si una orden del técnico vuelve a repetirse antes de 30 días. Mientras más bajo, mejor. ' +
+      'Se calcula con el mes calendario anterior completo (no el mes en curso) porque el indicador necesita ' +
+      'esos 30 días para madurar: una orden cerrada hace pocos días todavía no tuvo tiempo de mostrar si se repite. ' +
+      'La meta máxima aceptada varía por ciudad (Arica, Santiago, V Región).',
+  },
+  derivaciones: {
+    titulo: 'Derivaciones (Alta/Migración)',
+    texto: 'Mide qué porcentaje de las órdenes de Alta o Migración del técnico terminaron derivadas ' +
+      '(estado "No Realizada") en vez de completadas. Mientras más bajo, mejor. Se calcula con el avance del mes ' +
+      'en curso (desde el día 1 hasta el último día con datos completos). Meta oficial: no superar 35%.',
+  },
+  rgu: {
+    titulo: 'Producción RGU',
+    texto: 'Mide el % de cumplimiento de la meta de producción: RGU completada (Completado, o derivada a GSA en vez ' +
+      'de perderse) dividido por la meta del período. La meta del período = meta diaria según la ciudad del técnico ' +
+      '(Arica 4.3, Santiago y V Región 4) multiplicada por los días que el técnico efectivamente trabajó/produjo ' +
+      'ese mes. Mientras más alto, mejor (100% o más = cumple la meta).',
+  },
+};
+
+function mostrarInfo(clave) {
+  const info = INFO_METRICAS[clave];
+  if (!info) return;
+  document.getElementById('modalInfoTitulo').textContent = info.titulo;
+  document.getElementById('modalInfoTexto').textContent = info.texto;
+  document.getElementById('modalInfo').classList.add('abierto');
+}
+function cerrarInfo() {
+  document.getElementById('modalInfo').classList.remove('abierto');
+}
+window.mostrarInfo = mostrarInfo;
+window.cerrarInfo = cerrarInfo;
+
+document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); renderEvolutivoMensual(); });
 document.getElementById('filtroBusqueda').addEventListener('input', renderTabla);
 
 renderTabla();
 renderEvolutivo();
+renderEvolutivoMensual();
 </script>
 
 <script>

@@ -39,6 +39,21 @@
   .campo select, .campo input{ padding:9px 11px; border:1px solid var(--border); border-radius:8px; font-size:14.5px; font-family:inherit; background:#fff; }
   .campo select:focus, .campo input:focus{ outline:2px solid var(--celeste); border-color:var(--celeste); }
 
+  .titulo-seccion{ margin:0 0 3px; font-size:15px; color:var(--cobra-navy); }
+  .explica-seccion{ margin:0 0 10px; font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+
+  th.clicable{ cursor:pointer; }
+  th.clicable:hover{ color:var(--cobra-blue); }
+  th.clicable .info-ico{ font-size:10px; margin-left:3px; opacity:.7; }
+
+  .modal-fondo{ display:none; position:fixed; inset:0; background:rgba(20,30,45,.45); z-index:50; align-items:center; justify-content:center; padding:20px; }
+  .modal-fondo.abierto{ display:flex; }
+  .modal-caja{ background:#fff; border-radius:14px; max-width:420px; width:100%; padding:24px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
+  .modal-caja h3{ margin:0 0 10px; font-size:16px; color:var(--cobra-navy); }
+  .modal-caja p{ margin:0; font-size:13.5px; line-height:1.6; color:var(--text); }
+  .modal-cerrar{ margin-top:18px; width:100%; padding:10px; border:none; border-radius:8px; background:var(--cobra-navy); color:#fff; font-weight:700; font-size:13.5px; cursor:pointer; }
+  .modal-cerrar:hover{ background:var(--cobra-blue); }
+
   .resumen-row{ display:flex; flex-wrap:wrap; gap:14px; margin-bottom:18px; }
   .resumen-card{ flex:1; min-width:140px; padding:16px 18px; text-align:center; }
   .resumen-card .num{ font-size:26px; font-weight:800; color:var(--cobra-navy); }
@@ -93,10 +108,6 @@
       <label for="filtroSupervisor">Supervisor / Equipo</label>
       <select id="filtroSupervisor"></select>
     </div>
-    <div class="campo">
-      <label for="filtroAgencia">Agencia</label>
-      <select id="filtroAgencia"></select>
-    </div>
     <div class="campo" style="flex:1;">
       <label for="filtroBusqueda">Buscar técnico</label>
       <input type="text" id="filtroBusqueda" placeholder="Nombre del técnico...">
@@ -105,10 +116,12 @@
 
   <div class="ranking-row" id="rankingRow"></div>
 
+  <h2 class="titulo-seccion">Resumen del filtro actual</h2>
+  <p class="explica-seccion">Cuántos técnicos hay en tu selección y cuántos de ellos están en foco prioritario en cada indicador.</p>
   <div class="resumen-row" id="resumenRow"></div>
 
   <div class="panel" id="panelEvolutivo" style="padding:20px 22px; margin-bottom:18px;">
-    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad (repetidos) — <span id="evolutivoTitulo"></span></h2>
+    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad dentro del mes — <span id="evolutivoTitulo"></span></h2>
     <p class="frase-tendencia" id="evolutivoExplicacion" style="margin:0 0 14px; font-size:16px; font-weight:800; line-height:1.4;"></p>
     <div id="evolutivoChart"></div>
     <div class="sin-resultados" id="evolutivoSinDatos" style="display:none; padding:20px 0;">No hay días maduros suficientes para graficar todavía.</div>
@@ -119,6 +132,16 @@
     </p>
   </div>
 
+  <div class="panel" id="panelEvolutivoMensual" style="padding:20px 22px; margin-bottom:18px;">
+    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Calidad mes a mes — <span id="mensualTitulo"></span></h2>
+    <p class="frase-tendencia" id="mensualExplicacion" style="margin:0 0 14px; font-size:16px; font-weight:800; line-height:1.4;"></p>
+    <div id="mensualChart"></div>
+    <div class="sin-resultados" id="mensualSinDatos" style="display:none; padding:20px 0;">No hay suficientes meses cerrados todavía.</div>
+    <p style="margin:12px 0 0; font-size:12px; color:var(--text-dim); line-height:1.5;">
+      % de repetidos de cada mes completo (no acumulado entre meses), desde enero hasta el último mes ya cerrado.
+    </p>
+  </div>
+
   <div class="panel tabla-wrap">
     <table>
       <thead>
@@ -126,9 +149,9 @@
           <th>Técnico</th>
           <th>Agencia</th>
           <th>Supervisor</th>
-          <th class="num">Calidad (repetidos)</th>
-          <th class="num">Derivaciones</th>
-          <th class="num">Producción RGU</th>
+          <th class="num clicable" onclick="mostrarInfo('calidad')">Calidad (repetidos)<span class="info-ico">ⓘ</span></th>
+          <th class="num clicable" onclick="mostrarInfo('derivaciones')">Derivaciones<span class="info-ico">ⓘ</span></th>
+          <th class="num clicable" onclick="mostrarInfo('rgu')">Producción RGU<span class="info-ico">ⓘ</span></th>
         </tr>
       </thead>
       <tbody id="tablaBody"></tbody>
@@ -136,6 +159,14 @@
     <div class="sin-resultados" id="sinResultados" style="display:none;">No hay técnicos que coincidan con el filtro.</div>
   </div>
 </main>
+
+<div class="modal-fondo" id="modalInfo" onclick="if (event.target === this) cerrarInfo()">
+  <div class="modal-caja">
+    <h3 id="modalInfoTitulo"></h3>
+    <p id="modalInfoTexto"></p>
+    <button class="modal-cerrar" onclick="cerrarInfo()">Entendido</button>
+  </div>
+</div>
 
 <footer id="footerText"></footer>
 
@@ -174,9 +205,7 @@ function llenarSelect(el, valores, etiquetaTodos) {
 }
 
 const supervisores = [...new Set(DATA.tecnicos.map((t) => t.supervisor).filter(Boolean))].sort();
-const agencias = [...new Set(DATA.tecnicos.map((t) => t.agencia).filter(Boolean))].sort();
 llenarSelect(document.getElementById('filtroSupervisor'), supervisores, 'Todos los supervisores');
-llenarSelect(document.getElementById('filtroAgencia'), agencias, 'Todas las agencias');
 
 function renderResumen(lista) {
   const conCalidad = lista.filter((t) => t.calidad);
@@ -232,12 +261,10 @@ function renderRanking(lista) {
 
 function renderTabla() {
   const supervisor = document.getElementById('filtroSupervisor').value;
-  const agencia = document.getElementById('filtroAgencia').value;
   const busqueda = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
 
   const filtrados = DATA.tecnicos.filter((t) =>
     (!supervisor || t.supervisor === supervisor) &&
-    (!agencia || t.agencia === agencia) &&
     (!busqueda || t.nombre.toLowerCase().includes(busqueda))
   );
 
@@ -280,7 +307,14 @@ function formatFechaCorta(iso) {
   return d + '/' + m;
 }
 
-function dibujarLineChart(el, fechas, valores) {
+function formatMesCorto(iso) {
+  const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const [, m] = iso.split('-');
+  return MESES[parseInt(m, 10) - 1] || iso;
+}
+
+function dibujarLineChart(el, fechas, valores, formatLabel) {
+  formatLabel = formatLabel || formatFechaCorta;
   const puntos = valores.map((v, i) => ({ x: i, v })).filter((p) => p.v != null);
   if (puntos.length < 2) {
     el.innerHTML = '';
@@ -309,9 +343,9 @@ function dibujarLineChart(el, fechas, valores) {
       + '<text x="' + (padL - 8) + '" y="' + (y + 4).toFixed(1) + '" font-size="10" fill="#6b7a8c" text-anchor="end">' + v.toFixed(0) + '%</text>';
   }).join('');
 
-  const idxLabels = n <= 1 ? [0] : [0, Math.floor((n - 1) / 2), n - 1];
+  const idxLabels = n <= 9 ? [...Array(n).keys()] : [0, Math.floor((n - 1) / 2), n - 1];
   const xLabels = [...new Set(idxLabels)].map((i) =>
-    '<text x="' + xAt(i).toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="#6b7a8c" text-anchor="middle">' + formatFechaCorta(fechas[i]) + '</text>'
+    '<text x="' + xAt(i).toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="#6b7a8c" text-anchor="middle">' + formatLabel(fechas[i]) + '</text>'
   ).join('');
 
   const ultimo = puntos[puntos.length - 1];
@@ -367,15 +401,11 @@ function renderEvolutivo() {
   }
 
   const supervisor = document.getElementById('filtroSupervisor').value;
-  const agencia = document.getElementById('filtroAgencia').value;
 
   let valores, titulo;
   if (supervisor && ev.porSupervisor[supervisor]) {
     valores = ev.porSupervisor[supervisor];
     titulo = supervisor;
-  } else if (agencia && ev.porAgencia[agencia]) {
-    valores = ev.porAgencia[agencia];
-    titulo = agencia;
   } else {
     valores = ev.todos;
     titulo = 'Todos los equipos';
@@ -387,12 +417,78 @@ function renderEvolutivo() {
   document.getElementById('evolutivoExplicacion').innerHTML = ok ? explicarTendencia(valores) : '';
 }
 
-document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); });
-document.getElementById('filtroAgencia').addEventListener('change', () => { renderTabla(); renderEvolutivo(); });
+function renderEvolutivoMensual() {
+  const ev = DATA.evolutivoMensual;
+  const chartEl = document.getElementById('mensualChart');
+  const sinDatos = document.getElementById('mensualSinDatos');
+
+  if (!ev || !ev.meses || ev.meses.length === 0) {
+    chartEl.innerHTML = '';
+    sinDatos.style.display = 'block';
+    document.getElementById('mensualTitulo').textContent = 'sin datos';
+    return;
+  }
+
+  const supervisor = document.getElementById('filtroSupervisor').value;
+
+  let valores, titulo;
+  if (supervisor && ev.porSupervisor[supervisor]) {
+    valores = ev.porSupervisor[supervisor];
+    titulo = supervisor;
+  } else {
+    valores = ev.todos;
+    titulo = 'Todos los equipos';
+  }
+  document.getElementById('mensualTitulo').textContent = titulo;
+
+  const ok = dibujarLineChart(chartEl, ev.meses, valores, formatMesCorto);
+  sinDatos.style.display = ok ? 'none' : 'block';
+  document.getElementById('mensualExplicacion').innerHTML = ok ? explicarTendencia(valores) : '';
+}
+
+// Explicaciones que aparecen al hacer clic en cada encabezado de la tabla.
+const INFO_METRICAS = {
+  calidad: {
+    titulo: 'Calidad (repetidos)',
+    texto: 'Mide si una orden del técnico vuelve a repetirse antes de 30 días. Mientras más bajo, mejor. ' +
+      'Se calcula con el mes calendario anterior completo (no el mes en curso) porque el indicador necesita ' +
+      'esos 30 días para madurar: una orden cerrada hace pocos días todavía no tuvo tiempo de mostrar si se repite. ' +
+      'La meta máxima aceptada varía por ciudad (Arica, Santiago, V Región).',
+  },
+  derivaciones: {
+    titulo: 'Derivaciones (Alta/Migración)',
+    texto: 'Mide qué porcentaje de las órdenes de Alta o Migración del técnico terminaron derivadas ' +
+      '(estado "No Realizada") en vez de completadas. Mientras más bajo, mejor. Se calcula con el avance del mes ' +
+      'en curso (desde el día 1 hasta el último día con datos completos). Meta oficial: no superar 35%.',
+  },
+  rgu: {
+    titulo: 'Producción RGU',
+    texto: 'Mide el % de cumplimiento de la meta de producción: RGU completada (Completado, o derivada a GSA en vez ' +
+      'de perderse) dividido por la meta del período. La meta del período = meta diaria según la ciudad del técnico ' +
+      '(Arica 4.3, Santiago y V Región 4) multiplicada por los días que el técnico efectivamente trabajó/produjo ' +
+      'ese mes. Mientras más alto, mejor (100% o más = cumple la meta).',
+  },
+};
+
+function mostrarInfo(clave) {
+  const info = INFO_METRICAS[clave];
+  if (!info) return;
+  document.getElementById('modalInfoTitulo').textContent = info.titulo;
+  document.getElementById('modalInfoTexto').textContent = info.texto;
+  document.getElementById('modalInfo').classList.add('abierto');
+}
+function cerrarInfo() {
+  document.getElementById('modalInfo').classList.remove('abierto');
+}
+window.mostrarInfo = mostrarInfo;
+window.cerrarInfo = cerrarInfo;
+
+document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); renderEvolutivoMensual(); });
 document.getElementById('filtroBusqueda').addEventListener('input', renderTabla);
 
 renderTabla();
 renderEvolutivo();
+renderEvolutivoMensual();
 </script>
 
 <script>

@@ -243,11 +243,11 @@ function calcularCalidad(baseRows, repRows, supervisores) {
   // Empresa, EsRepetido30Dias, SUPERVISOR)
   const vistos = new Set();
   const porTecnico = new Map();
-  const porDia = new Map(); // fecha (yyyy-mm-dd) -> { total, rep, porSupervisor: Map, porAgencia: Map }
+  const porDia = new Map(); // fecha (yyyy-mm-dd) -> { total, rep, porSupervisor: Map }
 
   function bucketDia(fecha) {
     if (!porDia.has(fecha)) {
-      porDia.set(fecha, { total: 0, rep: 0, porSupervisor: new Map(), porAgencia: new Map() });
+      porDia.set(fecha, { total: 0, rep: 0, porSupervisor: new Map() });
     }
     return porDia.get(fecha);
   }
@@ -294,7 +294,6 @@ function calcularCalidad(baseRows, repRows, supervisores) {
     dia.total += 1;
     dia.rep += esRepetido;
     sumarGrupo(dia.porSupervisor, supervisor, esRepetido);
-    sumarGrupo(dia.porAgencia, agencia, esRepetido);
   }
   return { porTecnico: [...porTecnico.values()], porDia };
 }
@@ -325,26 +324,60 @@ function construirEvolutivoCalidad(porDia, now = new Date()) {
   }
 
   const supervisoresUnicos = new Set();
-  const agenciasUnicas = new Set();
   for (const dia of porDia.values()) {
     for (const k of dia.porSupervisor.keys()) supervisoresUnicos.add(k);
-    for (const k of dia.porAgencia.keys()) agenciasUnicas.add(k);
   }
 
   const porSupervisor = {};
   for (const nombre of supervisoresUnicos) {
     porSupervisor[nombre] = acumularSerie((dia) => dia.porSupervisor.get(nombre));
   }
-  const porAgencia = {};
-  for (const nombre of agenciasUnicas) {
-    porAgencia[nombre] = acumularSerie((dia) => dia.porAgencia.get(nombre));
-  }
 
   return {
     fechas: fechasMaduras,
     todos: acumularSerie((dia) => dia),
     porSupervisor,
-    porAgencia,
+  };
+}
+
+// Serie mensual (no acumulada entre meses: cada mes muestra SU PROPIO %,
+// no un acumulado corriendo) de % repetidos, desde enero del anio en curso
+// hasta el ultimo mes ya completo. Como el rango de entrada solo incluye
+// meses completos (nunca el mes en curso), no hace falta filtrar por
+// madurez aqui -- ya viene resuelto por el rango de fechas consultado.
+function construirEvolutivoMensual(porDia) {
+  const porMes = new Map(); // "yyyy-mm" -> { total, rep, porSupervisor: Map }
+
+  for (const [fecha, dia] of porDia.entries()) {
+    const mes = fecha.slice(0, 7);
+    if (!porMes.has(mes)) porMes.set(mes, { total: 0, rep: 0, porSupervisor: new Map() });
+    const m = porMes.get(mes);
+    m.total += dia.total;
+    m.rep += dia.rep;
+    for (const [sup, g] of dia.porSupervisor.entries()) {
+      if (!m.porSupervisor.has(sup)) m.porSupervisor.set(sup, { total: 0, rep: 0 });
+      const ms = m.porSupervisor.get(sup);
+      ms.total += g.total;
+      ms.rep += g.rep;
+    }
+  }
+
+  const meses = [...porMes.keys()].sort();
+  const pct = (g) => (g && g.total ? Math.round((g.rep / g.total) * 1000) / 10 : null);
+
+  const supervisoresUnicos = new Set();
+  for (const m of porMes.values()) {
+    for (const k of m.porSupervisor.keys()) supervisoresUnicos.add(k);
+  }
+  const porSupervisor = {};
+  for (const nombre of supervisoresUnicos) {
+    porSupervisor[nombre] = meses.map((mes) => pct(porMes.get(mes).porSupervisor.get(nombre)));
+  }
+
+  return {
+    meses,
+    todos: meses.map((mes) => pct(porMes.get(mes))),
+    porSupervisor,
   };
 }
 
@@ -484,20 +517,23 @@ async function main() {
   console.log("==> Calculando rangos de fecha (mes a la fecha)...");
   const rangoMatriz = await monthToDateRangeMatriz(pool);
   const rangoCalidad = previousMonthRange();
+  const inicioAnio = toSqlDate(new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)));
   console.log(`==> MATRIZ_VTR (Derivaciones/RGU): ${rangoMatriz.label} [${rangoMatriz.start} a ${rangoMatriz.end})`);
   console.log(`==> CALIDAD_VTR (Calidad): ${rangoCalidad.label} [${rangoCalidad.start} a ${rangoCalidad.end})`);
+  console.log(`==> CALIDAD_VTR (Evolutivo mensual): ${inicioAnio} a ${rangoCalidad.end}`);
 
   console.log("==> Extrayendo datos crudos (sin CTE/JOIN/GROUP BY en el servidor)...");
-  const [supervisores, calidadBase, calidadRep, derivBase, rguBase] = await Promise.all([
+  const [supervisores, calidadBase, calidadRep, derivBase, rguBase, calidadHistorico] = await Promise.all([
     fetchSupervisores(pool),
     fetchCalidadBase(pool, rangoCalidad.start, rangoCalidad.end),
     fetchCalidadRepetidos(pool),
     fetchDerivacionesBase(pool, rangoMatriz.start, rangoMatriz.end),
     fetchRguBase(pool, rangoMatriz.start, rangoMatriz.end),
+    fetchCalidadBase(pool, inicioAnio, rangoCalidad.end),
   ]);
   await pool.close();
   console.log(
-    `==> Filas extraidas: Calidad=${calidadBase.length} (+${calidadRep.length} repetidos hist.) | Derivaciones=${derivBase.length} | RGU=${rguBase.length} | Supervisores=${supervisores.size}`
+    `==> Filas extraidas: Calidad=${calidadBase.length} (+${calidadRep.length} repetidos hist., +${calidadHistorico.length} historico enero-actual) | Derivaciones=${derivBase.length} | RGU=${rguBase.length} | Supervisores=${supervisores.size}`
   );
 
   console.log("==> Calculando indicadores localmente...");
@@ -505,8 +541,10 @@ async function main() {
   const derivaciones = calcularDerivaciones(derivBase, supervisores);
   const rgu = calcularRgu(rguBase, supervisores);
   const evolutivoCalidad = construirEvolutivoCalidad(calidadPorDia);
+  const { porDia: historicoPorDia } = calcularCalidad(calidadHistorico, calidadRep, supervisores);
+  const evolutivoMensual = construirEvolutivoMensual(historicoPorDia);
   console.log(
-    `==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length} | Evolutivo: ${evolutivoCalidad.fechas.length} dias maduros`
+    `==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length} | Evolutivo diario: ${evolutivoCalidad.fechas.length} dias maduros | Evolutivo mensual: ${evolutivoMensual.meses.length} meses`
   );
 
   // byRut: agrupa las 3 fuentes por RUT (clave interna, nunca se publica)
@@ -632,6 +670,7 @@ async function main() {
       rgu: t.rgu,
     })),
     evolutivoCalidad,
+    evolutivoMensual,
   };
   const htmlSup = templateSup.replace("__DATA_SUPERVISOR_JSON__", JSON.stringify(dataSupervisor));
   const outSupPath = path.join(__dirname, "supervisor.html");
