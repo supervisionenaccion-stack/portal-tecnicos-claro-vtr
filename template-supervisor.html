@@ -108,16 +108,12 @@
       <label for="filtroSupervisor">Supervisor / Equipo</label>
       <select id="filtroSupervisor"></select>
     </div>
-    <div class="campo" style="flex:1;">
-      <label for="filtroBusqueda">Buscar técnico</label>
-      <input type="text" id="filtroBusqueda" placeholder="Nombre del técnico...">
-    </div>
   </div>
 
   <div class="ranking-row" id="rankingRow"></div>
 
-  <h2 class="titulo-seccion">Resumen del filtro actual</h2>
-  <p class="explica-seccion">Cuántos técnicos hay en tu selección y cuántos de ellos están en foco prioritario en cada indicador.</p>
+  <h2 class="titulo-seccion">Resumen del equipo seleccionado</h2>
+  <p class="explica-seccion">Cantidad de técnicos incluidos en el filtro actual y cuántos de ellos no están cumpliendo la meta establecida en cada indicador (Calidad, Derivaciones y Producción RGU).</p>
   <div class="resumen-row" id="resumenRow"></div>
 
   <div class="panel" id="panelEvolutivo" style="padding:20px 22px; margin-bottom:18px;">
@@ -216,10 +212,10 @@ function renderResumen(lista) {
   const badRgu = conRgu.filter((t) => estadoRgu(t.rgu.pctCumplimiento) === 'bad').length;
 
   document.getElementById('resumenRow').innerHTML = [
-    { num: lista.length, lbl: 'Técnicos en el filtro' },
-    { num: badCalidad + ' / ' + conCalidad.length, lbl: 'Calidad en foco prioritario' },
-    { num: badDeriv + ' / ' + conDeriv.length, lbl: 'Derivaciones en foco prioritario' },
-    { num: badRgu + ' / ' + conRgu.length, lbl: 'RGU en foco prioritario' },
+    { num: lista.length, lbl: 'Técnicos en el equipo seleccionado' },
+    { num: badCalidad + ' / ' + conCalidad.length, lbl: 'No cumplen la meta de Calidad' },
+    { num: badDeriv + ' / ' + conDeriv.length, lbl: 'No cumplen la meta de Derivaciones' },
+    { num: badRgu + ' / ' + conRgu.length, lbl: 'No cumplen la meta de Producción RGU' },
   ].map((c) => '<div class="panel resumen-card"><div class="num">' + c.num + '</div><div class="lbl">' + c.lbl + '</div></div>').join('');
 }
 
@@ -261,11 +257,9 @@ function renderRanking(lista) {
 
 function renderTabla() {
   const supervisor = document.getElementById('filtroSupervisor').value;
-  const busqueda = document.getElementById('filtroBusqueda').value.trim().toLowerCase();
 
   const filtrados = DATA.tecnicos.filter((t) =>
-    (!supervisor || t.supervisor === supervisor) &&
-    (!busqueda || t.nombre.toLowerCase().includes(busqueda))
+    (!supervisor || t.supervisor === supervisor)
   );
 
   renderResumen(filtrados);
@@ -313,7 +307,7 @@ function formatMesCorto(iso) {
   return MESES[parseInt(m, 10) - 1] || iso;
 }
 
-function dibujarLineChart(el, fechas, valores, formatLabel) {
+function dibujarLineChart(el, fechas, valores, formatLabel, etiquetarTodos) {
   formatLabel = formatLabel || formatFechaCorta;
   const puntos = valores.map((v, i) => ({ x: i, v })).filter((p) => p.v != null);
   if (puntos.length < 2) {
@@ -321,7 +315,7 @@ function dibujarLineChart(el, fechas, valores, formatLabel) {
     return false;
   }
 
-  const W = 700, H = 220, padL = 42, padR = 16, padT = 16, padB = 30;
+  const W = 700, H = 220, padL = 42, padR = 16, padT = 24, padB = 30;
   const plotW = W - padL - padR, plotH = H - padT - padB;
 
   const maxV = Math.max(...puntos.map((p) => p.v), 1);
@@ -348,14 +342,17 @@ function dibujarLineChart(el, fechas, valores, formatLabel) {
     '<text x="' + xAt(i).toFixed(1) + '" y="' + (H - 8) + '" font-size="10" fill="#6b7a8c" text-anchor="middle">' + formatLabel(fechas[i]) + '</text>'
   ).join('');
 
-  const ultimo = puntos[puntos.length - 1];
+  const puntosAEtiquetar = etiquetarTodos ? puntos : [puntos[puntos.length - 1]];
+  const marcadores = puntosAEtiquetar.map((p) =>
+    '<circle cx="' + xAt(p.x).toFixed(1) + '" cy="' + yAt(p.v).toFixed(1) + '" r="4" fill="var(--cobra-navy)"/>'
+    + '<text x="' + xAt(p.x).toFixed(1) + '" y="' + (yAt(p.v) - 10).toFixed(1) + '" font-size="11" font-weight="700" fill="var(--cobra-navy)" text-anchor="middle">' + p.v.toFixed(1) + '%</text>'
+  ).join('');
 
   el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:auto; display:block;">'
     + gridLines
     + '<path d="' + areaD + '" fill="var(--celeste-soft)" opacity="0.7"/>'
     + '<path d="' + pathD + '" fill="none" stroke="var(--cobra-blue)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>'
-    + '<circle cx="' + xAt(ultimo.x).toFixed(1) + '" cy="' + yAt(ultimo.v).toFixed(1) + '" r="4" fill="var(--cobra-navy)"/>'
-    + '<text x="' + xAt(ultimo.x).toFixed(1) + '" y="' + (yAt(ultimo.v) - 10).toFixed(1) + '" font-size="11" font-weight="700" fill="var(--cobra-navy)" text-anchor="middle">' + ultimo.v.toFixed(1) + '%</text>'
+    + marcadores
     + xLabels
     + '</svg>';
   return true;
@@ -441,7 +438,7 @@ function renderEvolutivoMensual() {
   }
   document.getElementById('mensualTitulo').textContent = titulo;
 
-  const ok = dibujarLineChart(chartEl, ev.meses, valores, formatMesCorto);
+  const ok = dibujarLineChart(chartEl, ev.meses, valores, formatMesCorto, true);
   sinDatos.style.display = ok ? 'none' : 'block';
   document.getElementById('mensualExplicacion').innerHTML = ok ? explicarTendencia(valores) : '';
 }
@@ -450,23 +447,21 @@ function renderEvolutivoMensual() {
 const INFO_METRICAS = {
   calidad: {
     titulo: 'Calidad (repetidos)',
-    texto: 'Mide si una orden del técnico vuelve a repetirse antes de 30 días. Mientras más bajo, mejor. ' +
-      'Se calcula con el mes calendario anterior completo (no el mes en curso) porque el indicador necesita ' +
-      'esos 30 días para madurar: una orden cerrada hace pocos días todavía no tuvo tiempo de mostrar si se repite. ' +
-      'La meta máxima aceptada varía por ciudad (Arica, Santiago, V Región).',
+    queMide: 'Si una orden atendida por el técnico requiere una nueva visita por el mismo motivo antes de 30 días. Mientras más bajo el porcentaje, mejor.',
+    comoSeCalcula: 'Se calcula sobre el mes calendario <b>anterior</b> completo, no sobre el mes en curso. Esto es necesario porque el indicador requiere que transcurran los 30 días completos: una orden cerrada hace pocos días aún no ha tenido tiempo de mostrar si se repite.',
+    meta: 'La meta máxima de repetidos varía según la ciudad del técnico (Arica, Santiago, V Región).',
   },
   derivaciones: {
     titulo: 'Derivaciones (Alta/Migración)',
-    texto: 'Mide qué porcentaje de las órdenes de Alta o Migración del técnico terminaron derivadas ' +
-      '(estado "No Realizada") en vez de completadas. Mientras más bajo, mejor. Se calcula con el avance del mes ' +
-      'en curso (desde el día 1 hasta el último día con datos completos). Meta oficial: no superar 35%.',
+    queMide: 'Qué porcentaje de las órdenes de Alta o Migración del técnico terminaron derivadas (estado "No Realizada") en vez de completadas. Mientras más bajo el porcentaje, mejor.',
+    comoSeCalcula: 'Se calcula con el avance del mes en curso: desde el día 1 hasta el último día con datos completos en el sistema.',
+    meta: 'La meta oficial es no superar el 35%.',
   },
   rgu: {
     titulo: 'Producción RGU',
-    texto: 'Mide el % de cumplimiento de la meta de producción: RGU completada (Completado, o derivada a GSA en vez ' +
-      'de perderse) dividido por la meta del período. La meta del período = meta diaria según la ciudad del técnico ' +
-      '(Arica 4.3, Santiago y V Región 4) multiplicada por los días que el técnico efectivamente trabajó/produjo ' +
-      'ese mes. Mientras más alto, mejor (100% o más = cumple la meta).',
+    queMide: 'El porcentaje de cumplimiento de la meta de producción del técnico. Mientras más alto, mejor: 100% o más significa que cumplió su meta.',
+    comoSeCalcula: 'RGU completada (orden Completada, o derivada a GSA en vez de perderse) dividida por la meta del período. La meta del período se calcula como la meta diaria según la ciudad del técnico (Arica 4,3 · Santiago y V Región 4,0) multiplicada por la cantidad de días que el técnico efectivamente trabajó/produjo ese mes.',
+    meta: 'Cumple la meta al llegar o superar el 100% de cumplimiento.',
   },
 };
 
@@ -474,7 +469,10 @@ function mostrarInfo(clave) {
   const info = INFO_METRICAS[clave];
   if (!info) return;
   document.getElementById('modalInfoTitulo').textContent = info.titulo;
-  document.getElementById('modalInfoTexto').textContent = info.texto;
+  document.getElementById('modalInfoTexto').innerHTML =
+    '<b>Qué mide:</b> ' + info.queMide + '<br><br>'
+    + '<b>Cómo se calcula:</b> ' + info.comoSeCalcula + '<br><br>'
+    + '<b>Meta:</b> ' + info.meta;
   document.getElementById('modalInfo').classList.add('abierto');
 }
 function cerrarInfo() {
@@ -484,7 +482,6 @@ window.mostrarInfo = mostrarInfo;
 window.cerrarInfo = cerrarInfo;
 
 document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); renderEvolutivoMensual(); });
-document.getElementById('filtroBusqueda').addEventListener('input', renderTabla);
 
 renderTabla();
 renderEvolutivo();
