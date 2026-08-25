@@ -132,10 +132,10 @@
   <div id="loginBox" class="panel">
     <div class="icono-login">👋</div>
     <h2>Bienvenido</h2>
-    <p class="desc">Ingresa con tu ID CAT para ver tu reporte personal. Nadie más puede ver tu información.</p>
+    <p class="desc">Ingresa con tu ID para ver tu reporte personal. Nadie más puede ver tu información.</p>
     <div id="loginError"></div>
     <div class="campo">
-      <label for="inputNombre">ID CAT</label>
+      <label for="inputNombre">ID</label>
       <input type="text" id="inputNombre" placeholder="Ej: 123456" autocomplete="username" inputmode="numeric" maxlength="6">
       <div class="ayuda">Son los últimos 6 caracteres de tu RUT, incluido el dígito verificador (si termina en K, usa 0).</div>
     </div>
@@ -523,7 +523,7 @@ function intentarLogin() {
   const errorBox = document.getElementById('loginError');
   const t = DATA.tecnicos[key];
   if (!t || !key) {
-    errorBox.textContent = 'ID CAT no encontrado.';
+    errorBox.textContent = 'ID no encontrado.';
     errorBox.style.display = 'block';
     return;
   }

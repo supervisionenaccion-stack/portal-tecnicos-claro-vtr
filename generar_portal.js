@@ -746,7 +746,7 @@ async function main() {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Credenciales");
   ws.columns = [
-    { header: "ID CAT", key: "idCat", width: 12 },
+    { header: "ID", key: "idCat", width: 12 },
     { header: "Nombre completo", key: "nombre", width: 34 },
     { header: "Agencia", key: "agencia", width: 14 },
     { header: "Supervisor", key: "supervisor", width: 30 },

@@ -1,6 +1,6 @@
 # Portal de Técnicos — Claro/VTR
 
-Cada técnico entra solo con su **ID CAT** (últimos 6 caracteres de su RUT,
+Cada técnico entra solo con su **ID** (últimos 6 caracteres de su RUT,
 K → 0) y ve sus propios indicadores: Calidad (repetidos 30 días),
 Derivaciones (Alta/Migración) y Producción RGU. Es un sitio estático local,
 sin servidor ni publicación externa.
@@ -13,7 +13,7 @@ portal-tecnicos/
 ├── template.html                       ← plantilla HTML/CSS/JS (no se edita a mano el index.html)
 ├── generar_portal.js                   ← consulta la BD y regenera index.html + credenciales
 ├── Actualizar_Dashboard.bat            ← DOBLE CLIC: corre generar_portal.js
-├── Credenciales_Tecnicos_NO_SUBIR.xlsx ← ID CAT de cada tecnico (SOLO local, no se sube)
+├── Credenciales_Tecnicos_NO_SUBIR.xlsx ← ID de cada tecnico (SOLO local, no se sube)
 ├── Tecnicos_Baja_NO_SUBIR.json         ← RUT de tecnicos de baja a excluir (SOLO local, no se sube)
 ├── .env.local                          ← credenciales de la base de datos (SOLO local, no se sube)
 └── .gitignore
@@ -41,12 +41,12 @@ Ambas fechas quedan indicadas al pie de la página.
 
 ## Repartir los accesos a los técnicos
 
-Cada corrida genera `Credenciales_Tecnicos_NO_SUBIR.xlsx` con el ID CAT de
+Cada corrida genera `Credenciales_Tecnicos_NO_SUBIR.xlsx` con el ID de
 cada técnico (nunca se sube a git — está en `.gitignore`). Es solo para que
-se lo repartas a cada técnico; no hay clave adicional, el ID CAT es el
+se lo repartas a cada técnico; no hay clave adicional, el ID es el
 único dato de acceso.
 
-El ID CAT se deriva directamente del RUT, así que es estable mientras el
+El ID se deriva directamente del RUT, así que es estable mientras el
 técnico no cambie de RUT y no requiere manejo de duplicados por nombre como
 antes. Aun así, dos RUT distintos podrían coincidir por azar en esos 6
 caracteres (con los ~100 técnicos actuales no ha pasado nunca) — si
@@ -73,8 +73,8 @@ credenciales: contiene RUT completo, por eso nunca se sube a git). Formato:
 ## Privacidad
 
 El RUT completo de los técnicos nunca se embebe en `index.html`: solo se
-usa en memoria, al generar el sitio, para calcular el ID CAT y para agrupar
-los datos internamente. El objeto que se escribe en el HTML usa el ID CAT
+usa en memoria, al generar el sitio, para calcular el ID y para agrupar
+los datos internamente. El objeto que se escribe en el HTML usa el ID
 como clave, no el RUT completo.
 
 ## Criterios de filtrado (heredados de las consultas Power Query originales)
