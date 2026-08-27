@@ -13,15 +13,13 @@ if errorlevel 1 (
 
 echo.
 echo ==^> Publicando en GitHub (supervisionenaccion-stack)...
-gh auth switch --hostname github.com --user supervisionenaccion-stack
-if errorlevel 1 (
-    echo.
-    echo ERROR: no se pudo cambiar a la cuenta de GitHub supervisionenaccion-stack.
-    echo El portal se genero pero NO se publico. Corre "gh auth login" para esa
-    echo cuenta y volve a intentar.
-    pause
-    exit /b 1
-)
+rem gh auth switch es solo por prolijidad (para que "gh" en general apunte a
+rem la cuenta correcta si se usa a mano); el push en si NO depende de esto,
+rem porque este repo tiene su propia credencial guardada localmente
+rem (ver .git/config y .git/credentials-local). Por eso no se corta el
+rem script si el switch falla -- antes eso hacia que el .bat abortara aunque
+rem el push hubiera funcionado igual.
+gh auth switch --hostname github.com --user supervisionenaccion-stack >nul 2>&1
 
 git add index.html supervisor.html
 git commit -m "Actualizar portal %date% %time%"
