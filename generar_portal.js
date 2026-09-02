@@ -359,15 +359,10 @@ function construirEvolutivoCalidad(porDia, now = new Date()) {
 
 // Serie mensual (no acumulada entre meses: cada mes muestra SU PROPIO %,
 // no un acumulado corriendo) de % repetidos, desde enero del anio en curso
-// hasta el ultimo mes ya MADURO (no solo "completo" en el calendario).
-// Un mes calendario completo (ej. agosto, una vez que empieza septiembre)
-// todavia NO esta maduro: sus ordenes de los ultimos dias necesitan hasta
-// 30 dias para mostrar si se repiten, igual que en el grafico diario. Si
-// se mostrara apenas termina el mes calendario, el numero se veria
-// artificialmente bajo y seguiria subiendo semana a semana a medida que
-// aparecen mas repetidos -- por eso se corta en el ultimo mes cuyo ULTIMO
-// dia ya paso el umbral de madurez de 30 dias.
-function construirEvolutivoMensual(porDia, now = new Date()) {
+// hasta el mes en curso inclusive (igual criterio que RGU: se muestra el
+// avance del mes actual, aunque su % todavia pueda subir mas adelante a
+// medida que aparecen mas repetidos de sus ordenes mas recientes).
+function construirEvolutivoMensual(porDia) {
   const porMes = new Map(); // "yyyy-mm" -> { total, rep, porSupervisor: Map, porTecnico: Map }
 
   for (const [fecha, dia] of porDia.entries()) {
@@ -390,12 +385,7 @@ function construirEvolutivoMensual(porDia, now = new Date()) {
     }
   }
 
-  const limiteMaduro = toSqlDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
-  const meses = [...porMes.keys()].sort().filter((mes) => {
-    const [y, m] = mes.split('-').map(Number);
-    const ultimoDiaMes = toSqlDate(new Date(Date.UTC(y, m, 0))); // dia 0 del mes siguiente = ultimo dia de "mes"
-    return ultimoDiaMes <= limiteMaduro;
-  });
+  const meses = [...porMes.keys()].sort();
   const pct = (g) => (g && g.total ? Math.round((g.rep / g.total) * 1000) / 10 : null);
 
   const supervisoresUnicos = new Set();
@@ -625,7 +615,7 @@ async function main() {
   const inicioAnio = toSqlDate(new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)));
   console.log(`==> MATRIZ_VTR (Derivaciones/RGU): ${rangoMatriz.label} [${rangoMatriz.start} a ${rangoMatriz.end})`);
   console.log(`==> CALIDAD_VTR (Calidad): ${rangoCalidad.label} [${rangoCalidad.start} a ${rangoCalidad.end})`);
-  console.log(`==> CALIDAD_VTR (Evolutivo mensual): ${inicioAnio} a ${rangoCalidad.end}`);
+  console.log(`==> CALIDAD_VTR (Evolutivo mensual): ${inicioAnio} a ${rangoMatriz.end}`);
   console.log(`==> MATRIZ_VTR (Evolutivo mensual RGU): ${inicioAnio} a ${rangoMatriz.end}`);
 
   console.log("==> Extrayendo datos crudos (sin CTE/JOIN/GROUP BY en el servidor)...");
@@ -635,7 +625,10 @@ async function main() {
     fetchCalidadRepetidos(pool),
     fetchDerivacionesBase(pool, rangoMatriz.start, rangoMatriz.end),
     fetchRguBase(pool, rangoMatriz.start, rangoMatriz.end),
-    fetchCalidadBase(pool, inicioAnio, rangoCalidad.end),
+    // Hasta rangoMatriz.end (hoy), no solo hasta el inicio del mes en curso,
+    // para que el mes en curso tambien aparezca en el grafico de evolucion
+    // mensual -- igual criterio que RGU/Derivaciones.
+    fetchCalidadBase(pool, inicioAnio, rangoMatriz.end),
     fetchRguBase(pool, inicioAnio, rangoMatriz.end),
   ]);
   await pool.close();
