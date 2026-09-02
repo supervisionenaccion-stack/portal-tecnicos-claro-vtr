@@ -353,7 +353,8 @@ function bloqueRgu(datos) {
 function formatMesCorto(iso) {
   const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const [, m] = iso.split('-');
-  return MESES[parseInt(m, 10) % 12] || iso;
+  // "iso" viene como "yyyy-mm" con mes de 1 a 12; MESES es de indice 0 a 11.
+  return MESES[parseInt(m, 10) - 1] || iso;
 }
 
 function dibujarLineChart(el, fechas, valores, formatLabel, etiquetarTodos) {
