@@ -615,7 +615,7 @@ async function main() {
   const inicioAnio = toSqlDate(new Date(Date.UTC(new Date().getUTCFullYear(), 0, 1)));
   console.log(`==> MATRIZ_VTR (Derivaciones/RGU): ${rangoMatriz.label} [${rangoMatriz.start} a ${rangoMatriz.end})`);
   console.log(`==> CALIDAD_VTR (Calidad): ${rangoCalidad.label} [${rangoCalidad.start} a ${rangoCalidad.end})`);
-  console.log(`==> CALIDAD_VTR (Evolutivo mensual): ${inicioAnio} a ${rangoMatriz.end}`);
+  console.log(`==> CALIDAD_VTR (Evolutivo mensual): ${inicioAnio} a ${rangoCalidad.end}`);
   console.log(`==> MATRIZ_VTR (Evolutivo mensual RGU): ${inicioAnio} a ${rangoMatriz.end}`);
 
   console.log("==> Extrayendo datos crudos (sin CTE/JOIN/GROUP BY en el servidor)...");
@@ -625,10 +625,13 @@ async function main() {
     fetchCalidadRepetidos(pool),
     fetchDerivacionesBase(pool, rangoMatriz.start, rangoMatriz.end),
     fetchRguBase(pool, rangoMatriz.start, rangoMatriz.end),
-    // Hasta rangoMatriz.end (hoy), no solo hasta el inicio del mes en curso,
-    // para que el mes en curso tambien aparezca en el grafico de evolucion
-    // mensual -- igual criterio que RGU/Derivaciones.
-    fetchCalidadBase(pool, inicioAnio, rangoMatriz.end),
+    // Solo hasta rangoCalidad.end (inicio del mes en curso): a diferencia de
+    // RGU, Calidad no tiene un numero real que mostrar para el mes en curso
+    // (los repetidos necesitan 30 dias para aparecer, asi que un mes recien
+    // empezado siempre daria ~0%, engañoso). El ultimo punto del grafico se
+    // etiqueta despues con el mes en curso pero usa el valor de este ultimo
+    // periodo ya completo -- mismo criterio que la tarjeta "Calidad Agosto".
+    fetchCalidadBase(pool, inicioAnio, rangoCalidad.end),
     fetchRguBase(pool, inicioAnio, rangoMatriz.end),
   ]);
   await pool.close();
@@ -643,6 +646,17 @@ async function main() {
   const evolutivoCalidad = construirEvolutivoCalidad(calidadPorDia);
   const { porTecnico: calidadAnual, porDia: historicoPorDia } = calcularCalidad(calidadHistorico, calidadRep, supervisores);
   const evolutivoMensual = construirEvolutivoMensual(historicoPorDia);
+  // El ultimo punto de la serie de Calidad queda con la fecha real de sus
+  // datos (el ultimo mes calendario completo, ej. agosto), pero se muestra
+  // en el grafico como si fuera el mes EN CURSO -- validado con el usuario:
+  // el numero real de Calidad de un mes recien empezado siempre da ~0%
+  // (los repetidos necesitan 30 dias para aparecer), asi que se prefiere
+  // seguir mostrando el ultimo periodo ya reportable, pero etiquetado como
+  // "ahora". Mismo criterio que ya usa la tarjeta principal "Calidad Agosto".
+  if (evolutivoMensual.meses.length > 0) {
+    const mesActualClave = toSqlDate(new Date()).slice(0, 7);
+    evolutivoMensual.meses[evolutivoMensual.meses.length - 1] = mesActualClave;
+  }
   const evolutivoMensualRgu = construirEvolutivoMensualRgu(rguHistorico, supervisores);
   console.log(
     `==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length} | Evolutivo diario: ${evolutivoCalidad.fechas.length} dias maduros | Evolutivo mensual: ${evolutivoMensual.meses.length} meses | Evolutivo mensual RGU: ${evolutivoMensualRgu.meses.length} meses`
