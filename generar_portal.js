@@ -359,10 +359,15 @@ function construirEvolutivoCalidad(porDia, now = new Date()) {
 
 // Serie mensual (no acumulada entre meses: cada mes muestra SU PROPIO %,
 // no un acumulado corriendo) de % repetidos, desde enero del anio en curso
-// hasta el ultimo mes ya completo. Como el rango de entrada solo incluye
-// meses completos (nunca el mes en curso), no hace falta filtrar por
-// madurez aqui -- ya viene resuelto por el rango de fechas consultado.
-function construirEvolutivoMensual(porDia) {
+// hasta el ultimo mes ya MADURO (no solo "completo" en el calendario).
+// Un mes calendario completo (ej. agosto, una vez que empieza septiembre)
+// todavia NO esta maduro: sus ordenes de los ultimos dias necesitan hasta
+// 30 dias para mostrar si se repiten, igual que en el grafico diario. Si
+// se mostrara apenas termina el mes calendario, el numero se veria
+// artificialmente bajo y seguiria subiendo semana a semana a medida que
+// aparecen mas repetidos -- por eso se corta en el ultimo mes cuyo ULTIMO
+// dia ya paso el umbral de madurez de 30 dias.
+function construirEvolutivoMensual(porDia, now = new Date()) {
   const porMes = new Map(); // "yyyy-mm" -> { total, rep, porSupervisor: Map, porTecnico: Map }
 
   for (const [fecha, dia] of porDia.entries()) {
@@ -385,7 +390,12 @@ function construirEvolutivoMensual(porDia) {
     }
   }
 
-  const meses = [...porMes.keys()].sort();
+  const limiteMaduro = toSqlDate(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
+  const meses = [...porMes.keys()].sort().filter((mes) => {
+    const [y, m] = mes.split('-').map(Number);
+    const ultimoDiaMes = toSqlDate(new Date(Date.UTC(y, m, 0))); // dia 0 del mes siguiente = ultimo dia de "mes"
+    return ultimoDiaMes <= limiteMaduro;
+  });
   const pct = (g) => (g && g.total ? Math.round((g.rep / g.total) * 1000) / 10 : null);
 
   const supervisoresUnicos = new Set();
