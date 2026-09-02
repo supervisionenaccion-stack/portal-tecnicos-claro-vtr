@@ -125,7 +125,7 @@
 
 <header class="hero">
   <div class="brand-row">
-    <img src="logo-cobra.png" alt="Cobra">
+    <img src="logo-cobra.png" alt="Cobra" id="logoCobra">
     <div class="brand-divider"></div>
     <div class="eyebrow">Dashboard de Supervisores</div>
   </div>
@@ -907,6 +907,124 @@ renderEvolutivoMensualRgu();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
+</script>
+
+<!-- Easter egg: 7 clics seguidos en el logo. Aislado en su propio try/catch
+     e IIFE para que, si algo fallara aca, no afecte al resto del dashboard. -->
+<script>
+try {
+  (function () {
+    var logo = document.getElementById('logoCobra');
+    if (!logo) return;
+
+    var clicks = 0;
+    var lastClick = 0;
+    var activo = false;
+
+    var MENSAJES = [
+      '🎉 ¡Encontraste el easter egg! Gracias por revisar a tu equipo todos los días.',
+      '🏆 Detrás de cada número hay un técnico haciendo bien su pega. Gracias por notarlo.',
+      '✨ Sigue así — el equipo lo nota, aunque no siempre lo diga.'
+    ];
+
+    function lanzarConfeti() {
+      if (activo) return;
+      activo = true;
+
+      var canvas = document.createElement('canvas');
+      canvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;';
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      document.body.appendChild(canvas);
+      var ctx = canvas.getContext('2d');
+
+      var colores = ['#003c71', '#0071ce', '#29a9e0', '#1fa971', '#e2962e', '#ffd23f'];
+      var piezas = [];
+      var n = 140;
+      for (var i = 0; i < n; i++) {
+        piezas.push({
+          x: Math.random() * canvas.width,
+          y: -20 - Math.random() * canvas.height * 0.5,
+          w: 6 + Math.random() * 6,
+          h: 4 + Math.random() * 8,
+          color: colores[Math.floor(Math.random() * colores.length)],
+          vy: 2 + Math.random() * 3,
+          vx: (Math.random() - 0.5) * 2.5,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.3
+        });
+      }
+
+      var inicio = null;
+      var duracionMs = 2600;
+      var limpiado = false;
+      function limpiarCanvas() {
+        if (limpiado) return;
+        limpiado = true;
+        canvas.remove();
+        activo = false;
+      }
+
+      function frame(ts) {
+        if (!inicio) inicio = ts;
+        var transcurrido = ts - inicio;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (var i = 0; i < piezas.length; i++) {
+          var p = piezas[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vrot;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+        if (transcurrido < duracionMs) {
+          requestAnimationFrame(frame);
+        } else {
+          limpiarCanvas();
+        }
+      }
+      requestAnimationFrame(frame);
+      // Respaldo independiente de requestAnimationFrame: si la pestaña pierde
+      // foco o el navegador pausa la animacion (ahorro de bateria, pestaña en
+      // segundo plano), esto igual limpia el canvas para que nunca quede
+      // pegado en pantalla.
+      setTimeout(limpiarCanvas, duracionMs + 500);
+
+      var toast = document.createElement('div');
+      var msg = MENSAJES[Math.floor(Math.random() * MENSAJES.length)];
+      toast.textContent = msg;
+      toast.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-12px);' +
+        'background:var(--cobra-navy,#003c71);color:#fff;padding:12px 20px;border-radius:10px;' +
+        'font-weight:700;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.22);z-index:10000;' +
+        'max-width:min(90vw,420px);text-align:center;opacity:0;transition:opacity .35s ease,transform .35s ease;';
+      document.body.appendChild(toast);
+      requestAnimationFrame(function () {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(-50%) translateY(0)';
+      });
+      setTimeout(function () {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(-12px)';
+        setTimeout(function () { toast.remove(); }, 400);
+      }, 2600);
+    }
+
+    logo.addEventListener('click', function () {
+      var ahora = Date.now();
+      if (ahora - lastClick > 800) { clicks = 0; }
+      lastClick = ahora;
+      clicks++;
+      if (clicks >= 7) {
+        clicks = 0;
+        lanzarConfeti();
+      }
+    });
+  })();
+} catch (e) { /* easter egg opcional: cualquier error aca no debe afectar el dashboard */ }
 </script>
 
 </body>
