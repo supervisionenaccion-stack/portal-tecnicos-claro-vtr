@@ -169,6 +169,17 @@
     </p>
   </div>
 
+  <div class="panel" id="panelEvolutivoMensualRgu" style="padding:20px 22px; margin-bottom:18px;">
+    <h2 style="margin:0 0 10px; font-size:15px; color:var(--cobra-navy);">Evolución de Producción RGU mes a mes — <span id="mensualRguTitulo"></span></h2>
+    <p class="frase-tendencia" id="mensualRguExplicacion" style="margin:0 0 14px; font-size:16px; font-weight:800; line-height:1.4;"></p>
+    <div id="mensualRguChart"></div>
+    <div class="sin-resultados" id="mensualRguSinDatos" style="display:none; padding:20px 0;">No hay suficientes meses con datos todavía.</div>
+    <p style="margin:12px 0 0; font-size:12px; color:var(--text-dim); line-height:1.5;">
+      % de cumplimiento de la meta de producción RGU de cada mes (no acumulado entre meses), desde enero hasta el
+      último mes con datos. 100% significa que el equipo cumplió su meta ese mes.
+    </p>
+  </div>
+
   <div class="panel" id="panelPeoresTecnicos" style="padding:20px 22px; margin-bottom:18px;">
     <h2 style="margin:0 0 3px; font-size:15px; color:var(--cobra-navy);">Los 4 técnicos con más repetidos — <span id="peoresTecnicosTitulo"></span></h2>
     <p class="explica-seccion">Dentro del filtro de arriba, los técnicos con mayor % de repetidos y sus causas más frecuentes, para saber en qué conversar primero con cada uno.</p>
@@ -728,7 +739,10 @@ function explicarTendencia(valores) {
 // el primer mes (a veces muchos meses atras) era peor. Por eso aca se
 // compara el ultimo mes contra el promedio de los 2-3 meses inmediatamente
 // anteriores, que es lo que importa para saber si hay que poner ojo ahora.
-function explicarTendenciaMensual(valores) {
+// masEsMejor=false (default): bajar es mejorar, como en Calidad (menos
+// repetidos). masEsMejor=true: subir es mejorar, como en RGU (mas
+// cumplimiento de meta).
+function explicarTendenciaMensual(valores, masEsMejor) {
   const puntos = valores.filter((v) => v != null);
   if (puntos.length < 2) return '';
   const ultimo = puntos[puntos.length - 1];
@@ -738,14 +752,15 @@ function explicarTendenciaMensual(valores) {
   const previos = puntos.slice(Math.max(0, puntos.length - 4), puntos.length - 1);
   const promedioReciente = previos.reduce((a, b) => a + b, 0) / previos.length;
   const diff = ultimo - promedioReciente;
+  const mejoro = masEsMejor ? diff > 0 : diff < 0;
 
   let icono, texto, color;
   if (Math.abs(diff) < 0.5) {
     icono = '➡️'; texto = 'Se mantiene estable'; color = 'var(--warn)';
-  } else if (diff < 0) {
+  } else if (mejoro) {
     icono = '✅'; texto = 'Mejorando'; color = 'var(--ok)';
   } else {
-    icono = '🔴'; texto = 'Atención: la curva va al alza'; color = 'var(--bad)';
+    icono = '🔴'; texto = masEsMejor ? 'Atención: la curva va a la baja' : 'Atención: la curva va al alza'; color = 'var(--bad)';
   }
 
   return '<span style="color:' + color + ';">' + icono + ' ' + texto + ': '
@@ -812,6 +827,35 @@ function renderEvolutivoMensual() {
   document.getElementById('mensualExplicacion').innerHTML = ok ? explicarTendenciaMensual(valores) : '';
 }
 
+function renderEvolutivoMensualRgu() {
+  const ev = DATA.evolutivoMensualRgu;
+  const chartEl = document.getElementById('mensualRguChart');
+  const sinDatos = document.getElementById('mensualRguSinDatos');
+
+  if (!ev || !ev.meses || ev.meses.length === 0) {
+    chartEl.innerHTML = '';
+    sinDatos.style.display = 'block';
+    document.getElementById('mensualRguTitulo').textContent = 'sin datos';
+    return;
+  }
+
+  const supervisor = document.getElementById('filtroSupervisor').value;
+
+  let valores, titulo;
+  if (supervisor && ev.porSupervisor[supervisor]) {
+    valores = ev.porSupervisor[supervisor];
+    titulo = supervisor;
+  } else {
+    valores = ev.todos;
+    titulo = 'Todos los equipos';
+  }
+  document.getElementById('mensualRguTitulo').textContent = titulo;
+
+  const ok = dibujarLineChart(chartEl, ev.meses, valores, formatMesCorto, true);
+  sinDatos.style.display = ok ? 'none' : 'block';
+  document.getElementById('mensualRguExplicacion').innerHTML = ok ? explicarTendenciaMensual(valores, true) : '';
+}
+
 // Explicaciones que aparecen al hacer clic en cada encabezado de la tabla.
 const INFO_METRICAS = {
   calidad: {
@@ -850,11 +894,12 @@ function cerrarInfo() {
 window.mostrarInfo = mostrarInfo;
 window.cerrarInfo = cerrarInfo;
 
-document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); renderEvolutivoMensual(); });
+document.getElementById('filtroSupervisor').addEventListener('change', () => { renderTabla(); renderEvolutivo(); renderEvolutivoMensual(); renderEvolutivoMensualRgu(); });
 
 renderTabla();
 renderEvolutivo();
 renderEvolutivoMensual();
+renderEvolutivoMensualRgu();
 </script>
 
 <script>

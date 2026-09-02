@@ -45,6 +45,9 @@ const config = {
 //    julio, porque el indicador de repetido a 30 dias necesita ese tiempo
 //    para madurar). Al ya estar cerrado, no hace falta detectar dias
 //    parciales.
+// Ademas de esos rangos "para las tarjetas del mes", tanto Calidad como RGU
+// se vuelven a consultar por separado desde el 1 de enero hasta hoy, solo
+// para los graficos de evolucion mes a mes (mismo patron para ambos).
 function toSqlDate(d) {
   return d.toISOString().slice(0, 10);
 }
@@ -507,6 +510,59 @@ function calcularRgu(baseRows, supervisores) {
   return resultado;
 }
 
+// Serie mensual (no acumulada entre meses) de % de cumplimiento RGU, desde
+// enero del anio en curso hasta el ultimo mes con datos. Reutiliza
+// calcularRgu() por separado sobre las filas de cada mes (asi "dias con GSA"
+// y la meta del periodo se calculan por mes, igual que se calcularian por
+// mes en un reporte cerrado) y despues suma completada/meta a nivel de
+// equipo -- no promedia el % de cada tecnico, para no distorsionar el
+// resultado del equipo con tecnicos que trabajaron pocos dias ese mes.
+function construirEvolutivoMensualRgu(baseRows, supervisores) {
+  const porMes = new Map(); // "yyyy-mm" -> filas de ese mes
+  for (const row of baseRows) {
+    const mes = toSqlDate(new Date(row.Fecha)).slice(0, 7);
+    if (!porMes.has(mes)) porMes.set(mes, []);
+    porMes.get(mes).push(row);
+  }
+
+  const meses = [...porMes.keys()].sort();
+  const supervisoresUnicos = new Set();
+  const porMesAgregado = meses.map((mes) => {
+    const tecnicosDelMes = calcularRgu(porMes.get(mes), supervisores);
+    let completada = 0;
+    let meta = 0;
+    const porSupervisor = new Map(); // nombre -> { completada, meta }
+    for (const t of tecnicosDelMes) {
+      completada += t.rguCompletadaGsa;
+      meta += t.metaPeriodo;
+      if (t.supervisor) {
+        supervisoresUnicos.add(t.supervisor);
+        if (!porSupervisor.has(t.supervisor)) porSupervisor.set(t.supervisor, { completada: 0, meta: 0 });
+        const s = porSupervisor.get(t.supervisor);
+        s.completada += t.rguCompletadaGsa;
+        s.meta += t.metaPeriodo;
+      }
+    }
+    return { completada, meta, porSupervisor };
+  });
+
+  const pct = (completada, meta) => (meta ? Math.round((completada / meta) * 1000) / 10 : null);
+
+  const porSupervisor = {};
+  for (const nombre of supervisoresUnicos) {
+    porSupervisor[nombre] = porMesAgregado.map((m) => {
+      const s = m.porSupervisor.get(nombre);
+      return s ? pct(s.completada, s.meta) : null;
+    });
+  }
+
+  return {
+    meses,
+    todos: porMesAgregado.map((m) => pct(m.completada, m.meta)),
+    porSupervisor,
+  };
+}
+
 // ---------- 2c. Tecnicos de baja: exclusion manual (SUPERVISORES_VTR no tiene columna de estado) ----------
 // La BD no distingue tecnicos activos de los que ya no trabajan -- la tabla
 // simplemente sigue listando a todos los que alguna vez tuvieron datos. Por
@@ -560,19 +616,21 @@ async function main() {
   console.log(`==> MATRIZ_VTR (Derivaciones/RGU): ${rangoMatriz.label} [${rangoMatriz.start} a ${rangoMatriz.end})`);
   console.log(`==> CALIDAD_VTR (Calidad): ${rangoCalidad.label} [${rangoCalidad.start} a ${rangoCalidad.end})`);
   console.log(`==> CALIDAD_VTR (Evolutivo mensual): ${inicioAnio} a ${rangoCalidad.end}`);
+  console.log(`==> MATRIZ_VTR (Evolutivo mensual RGU): ${inicioAnio} a ${rangoMatriz.end}`);
 
   console.log("==> Extrayendo datos crudos (sin CTE/JOIN/GROUP BY en el servidor)...");
-  const [supervisores, calidadBase, calidadRep, derivBase, rguBase, calidadHistorico] = await Promise.all([
+  const [supervisores, calidadBase, calidadRep, derivBase, rguBase, calidadHistorico, rguHistorico] = await Promise.all([
     fetchSupervisores(pool),
     fetchCalidadBase(pool, rangoCalidad.start, rangoCalidad.end),
     fetchCalidadRepetidos(pool),
     fetchDerivacionesBase(pool, rangoMatriz.start, rangoMatriz.end),
     fetchRguBase(pool, rangoMatriz.start, rangoMatriz.end),
     fetchCalidadBase(pool, inicioAnio, rangoCalidad.end),
+    fetchRguBase(pool, inicioAnio, rangoMatriz.end),
   ]);
   await pool.close();
   console.log(
-    `==> Filas extraidas: Calidad=${calidadBase.length} (+${calidadRep.length} repetidos hist., +${calidadHistorico.length} historico enero-actual) | Derivaciones=${derivBase.length} | RGU=${rguBase.length} | Supervisores=${supervisores.size}`
+    `==> Filas extraidas: Calidad=${calidadBase.length} (+${calidadRep.length} repetidos hist., +${calidadHistorico.length} historico enero-actual) | Derivaciones=${derivBase.length} | RGU=${rguBase.length} (+${rguHistorico.length} historico enero-actual) | Supervisores=${supervisores.size}`
   );
 
   console.log("==> Calculando indicadores localmente...");
@@ -582,8 +640,9 @@ async function main() {
   const evolutivoCalidad = construirEvolutivoCalidad(calidadPorDia);
   const { porTecnico: calidadAnual, porDia: historicoPorDia } = calcularCalidad(calidadHistorico, calidadRep, supervisores);
   const evolutivoMensual = construirEvolutivoMensual(historicoPorDia);
+  const evolutivoMensualRgu = construirEvolutivoMensualRgu(rguHistorico, supervisores);
   console.log(
-    `==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length} | Evolutivo diario: ${evolutivoCalidad.fechas.length} dias maduros | Evolutivo mensual: ${evolutivoMensual.meses.length} meses`
+    `==> Tecnicos con datos: Calidad=${calidad.length} | Derivaciones=${derivaciones.length} | RGU=${rgu.length} | Evolutivo diario: ${evolutivoCalidad.fechas.length} dias maduros | Evolutivo mensual: ${evolutivoMensual.meses.length} meses | Evolutivo mensual RGU: ${evolutivoMensualRgu.meses.length} meses`
   );
 
   // byRut: agrupa las 3 fuentes por RUT (clave interna, nunca se publica)
@@ -736,6 +795,7 @@ async function main() {
     })),
     evolutivoCalidad,
     evolutivoMensual,
+    evolutivoMensualRgu,
   };
   const htmlSup = templateSup.replace("__DATA_SUPERVISOR_JSON__", JSON.stringify(dataSupervisor));
   const outSupPath = path.join(__dirname, "supervisor.html");
