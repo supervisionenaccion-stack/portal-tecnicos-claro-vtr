@@ -34,6 +34,19 @@
   .eyebrow{ text-transform:uppercase; letter-spacing:.14em; font-size:12.5px; color:var(--celeste); font-weight:800; }
   h1{ margin:0 0 6px; font-size:clamp(24px,4vw,34px); font-weight:800; letter-spacing:-0.01em; color:var(--cobra-navy); }
   .subtitle{ color:#3a4a5c; font-size:14.5px; max-width:640px; line-height:1.55; }
+  /* Fiestas Patrias: solo visible durante septiembre (segun la fecha del
+     navegador, no la fecha en que se genero el sitio). */
+  .banner-fiestas{ margin-top:16px; display:none; }
+  .banner-fiestas-pill{
+    background:#fff; color:var(--cobra-navy); font-weight:800; font-size:13px;
+    padding:8px 18px; border-radius:999px; box-shadow:0 2px 10px rgba(0,0,0,.08);
+    display:inline-flex; align-items:center; gap:9px;
+  }
+  .banner-fiestas-pill .dim{ font-weight:600; color:var(--text-dim); font-size:12px; }
+  .mini-flag-cl{
+    width:20px; height:auto; display:inline-block; border-radius:2px; flex:none;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);
+  }
   .link-portal{ color:var(--celeste); font-weight:700; text-decoration:none; }
   .link-portal:hover{ text-decoration:underline; }
   main{ padding:36px 6vw 80px; max-width:760px; margin:0 auto; }
@@ -122,12 +135,23 @@
 
 <header class="hero">
   <div class="brand-row">
-    <img src="logo-cobra.png" alt="Cobra">
+    <img src="logo-cobra.png" alt="Cobra" id="logoCobra">
     <div class="brand-divider"></div>
     <div class="eyebrow">Portal de Técnicos</div>
   </div>
   <h1>Mis Indicadores</h1>
   <div class="subtitle">Acá puedes ver, de forma simple, cómo te va este mes en Claro/VTR y en qué puedes enfocarte para mejorar.</div>
+  <div class="banner-fiestas" id="bannerFiestas">
+    <div class="banner-fiestas-pill">
+      <svg class="mini-flag-cl" viewBox="0 0 90 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="0" y="0" width="90" height="30" fill="#ffffff"/>
+        <rect x="0" y="30" width="90" height="30" fill="#D52B1E"/>
+        <rect x="0" y="0" width="30" height="30" fill="#0039A6"/>
+        <polygon points="15,6 17.0,12.25 23.56,12.22 18.23,16.05 20.29,22.28 15,18.4 9.71,22.28 11.77,16.05 6.44,12.22 13.0,12.25" fill="#ffffff"/>
+      </svg>
+      <span>¡Feliz Mes de la Patria!</span><span class="dim" id="fiestasSubtexto"></span>
+    </div>
+  </div>
 </header>
 
 <main>
@@ -562,6 +586,170 @@ if (keyGuardada && DATA.tecnicos[keyGuardada]) {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 }
+</script>
+
+<!-- Easter egg: 7 clics seguidos en el logo. Aislado en su propio try/catch
+     e IIFE para que, si algo fallara aca, no afecte al resto del portal. -->
+<script>
+try {
+  (function () {
+    var logo = document.getElementById('logoCobra');
+    if (!logo) return;
+
+    var clicks = 0;
+    var lastClick = 0;
+    var activo = false;
+
+    // Nombre del tecnico logueado, para personalizar el mensaje. Se calcula
+    // de nuevo cada vez que se dispara el easter egg (no una sola vez al
+    // cargar la pagina), por si alguien cierra sesion y entra otro tecnico
+    // sin recargar. Si no se puede obtener por cualquier motivo, simplemente
+    // se usan los mensajes genericos -- nunca rompe el easter egg.
+    function obtenerMensajes() {
+      var nombreComa = '';
+      try {
+        var keyGuardada2 = sessionStorage.getItem('portalTecnicoKey');
+        if (keyGuardada2 && typeof DATA !== 'undefined' && DATA.tecnicos && DATA.tecnicos[keyGuardada2] && DATA.tecnicos[keyGuardada2].nombre) {
+          var primerNombre = DATA.tecnicos[keyGuardada2].nombre.trim().split(/\s+/)[0];
+          if (primerNombre) {
+            nombreComa = ', ' + primerNombre.charAt(0).toUpperCase() + primerNombre.slice(1).toLowerCase();
+          }
+        }
+      } catch (eNombre) { /* sin nombre disponible: se usan mensajes genericos */ }
+
+      return {
+        generales: [
+          '🎉 ¡Encontraste el easter egg' + nombreComa + '! Gracias por tu trabajo día a día.',
+          '🏆 Cada instalación bien hecha cuenta, aunque no siempre se note. Gracias por tu esfuerzo' + nombreComa + '.',
+          '💪 Sigue así' + nombreComa + ' — tus números lo reflejan.',
+          '🔧 El trabajo bien hecho se nota, aunque el cliente no siempre lo diga. Gracias' + nombreComa + '.',
+          '🚀 Un cliente conforme hoy es un cliente que no repite. Buen trabajo' + nombreComa + '.',
+          '☕ Un cafecito virtual por tu trabajo de todos los días' + nombreComa + '.'
+        ],
+        septiembre: [
+          '🎉 ¡Viva Chile! Gracias por seguir dando el ancho, hasta en Fiestas Patrias' + nombreComa + '.',
+          '🎊 Feliz Dieciocho' + nombreComa + ' — que haya harto asado, cueca y buenos números.',
+          '⭐ ¡Arriba Chile! Gracias por tu trabajo' + nombreComa + '.',
+          '🎈 Que este Dieciocho tenga tanto asado como buenos indicadores' + nombreComa + '.'
+        ]
+      };
+    }
+
+    // Banner de Fiestas Patrias: se muestra/oculta segun la fecha real del
+    // navegador, no segun cuando se genero el sitio.
+    try {
+      var hoy = new Date();
+      if (hoy.getMonth() === 8) {
+        var banner = document.getElementById('bannerFiestas');
+        if (banner) {
+          banner.style.display = 'inline-block';
+          var sub = document.getElementById('fiestasSubtexto');
+          if (sub) { sub.textContent = 'Septiembre ' + hoy.getFullYear(); }
+        }
+      }
+    } catch (eBanner) { /* si algo falla aca, simplemente no se muestra el banner */ }
+
+    function lanzarConfeti() {
+      if (activo) return;
+      activo = true;
+
+      var canvas = document.createElement('canvas');
+      canvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;';
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      document.body.appendChild(canvas);
+      var ctx = canvas.getContext('2d');
+
+      var esSeptiembre = new Date().getMonth() === 8;
+      var colores = esSeptiembre
+        ? ['#0039A6', '#ffffff', '#D52B1E', '#0039A6', '#D52B1E']
+        : ['#003c71', '#0071ce', '#29a9e0', '#1fa971', '#e2962e', '#ffd23f'];
+      var piezas = [];
+      var n = 140;
+      for (var i = 0; i < n; i++) {
+        piezas.push({
+          x: Math.random() * canvas.width,
+          y: -20 - Math.random() * canvas.height * 0.5,
+          w: 6 + Math.random() * 6,
+          h: 4 + Math.random() * 8,
+          color: colores[Math.floor(Math.random() * colores.length)],
+          vy: 2 + Math.random() * 3,
+          vx: (Math.random() - 0.5) * 2.5,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.3
+        });
+      }
+
+      var inicio = null;
+      var duracionMs = 2600;
+      var limpiado = false;
+      function limpiarCanvas() {
+        if (limpiado) return;
+        limpiado = true;
+        canvas.remove();
+        activo = false;
+      }
+
+      function frame(ts) {
+        if (!inicio) inicio = ts;
+        var transcurrido = ts - inicio;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (var i = 0; i < piezas.length; i++) {
+          var p = piezas[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vrot;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+        if (transcurrido < duracionMs) {
+          requestAnimationFrame(frame);
+        } else {
+          limpiarCanvas();
+        }
+      }
+      requestAnimationFrame(frame);
+      // Respaldo independiente de requestAnimationFrame: si la pestaña pierde
+      // foco o el navegador pausa la animacion, esto igual limpia el canvas.
+      setTimeout(limpiarCanvas, duracionMs + 500);
+
+      var toast = document.createElement('div');
+      var mensajes = obtenerMensajes();
+      var listaMsg = esSeptiembre ? mensajes.septiembre : mensajes.generales;
+      var msg = listaMsg[Math.floor(Math.random() * listaMsg.length)];
+      toast.textContent = msg;
+      toast.style.cssText = 'position:fixed;left:50%;top:18px;transform:translateX(-50%) translateY(-12px);' +
+        'background:var(--cobra-navy,#003c71);color:#fff;padding:12px 20px;border-radius:10px;' +
+        'font-weight:700;font-size:13.5px;box-shadow:0 8px 24px rgba(0,0,0,.22);z-index:10000;' +
+        'max-width:min(90vw,420px);text-align:center;opacity:0;transition:opacity .35s ease,transform .35s ease;';
+      document.body.appendChild(toast);
+      requestAnimationFrame(function () {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(-50%) translateY(0)';
+      });
+      setTimeout(function () {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(-50%) translateY(-12px)';
+        setTimeout(function () { toast.remove(); }, 400);
+      }, 2600);
+    }
+
+    logo.addEventListener('click', function () {
+      var ahora = Date.now();
+      if (ahora - lastClick > 800) { clicks = 0; }
+      lastClick = ahora;
+      clicks++;
+      if (clicks >= 7) {
+        clicks = 0;
+        lanzarConfeti();
+      }
+    });
+  })();
+} catch (e) { /* easter egg opcional: cualquier error aca no debe afectar el portal */ }
 </script>
 
 </body>
