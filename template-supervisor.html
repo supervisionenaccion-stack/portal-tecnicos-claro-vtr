@@ -389,8 +389,14 @@ function contarCausas(eventos) {
   return [...mapa.entries()].map(([causa, cnt]) => ({ causa, cnt })).sort((a, b) => b.cnt - a.cnt);
 }
 function nombreCorto(nombreCompleto) {
-  const partes = nombreCompleto.trim().split(/\s+/);
-  return partes.length <= 2 ? nombreCompleto : partes[0] + ' ' + partes[partes.length - 1];
+  const partes = nombreCompleto.trim().split(/\s+/).filter(Boolean);
+  if (partes.length <= 2) return nombreCompleto;
+  // Nombre + apellido PATERNO -- no el ultimo token, que para un nombre
+  // chileno tipico de 4 partes (Nombre [Segundo nombre] ApellidoPaterno
+  // ApellidoMaterno) es el apellido MATERNO. Mismo criterio ya usado en
+  // usuarioFromNombre() de generar_portal.js/.ps1 para las credenciales.
+  const apellido = partes.length >= 4 ? partes[2] : partes[1];
+  return partes[0] + ' ' + apellido;
 }
 
 function listaRanking(items, clase) {
