@@ -128,6 +128,10 @@
   .sin-datos{ color:var(--text-dim); font-size:13.5px; font-style:italic; }
   .comunicados-embed{ border:1px solid var(--border); border-radius:10px; overflow:hidden; }
   .comunicados-embed iframe{ width:100%; height:420px; border:none; display:block; }
+  .tabla-repetidos-wrap{ overflow-x:auto; }
+  .tabla-repetidos{ width:100%; border-collapse:collapse; font-size:12.5px; min-width:420px; }
+  .tabla-repetidos th{ text-align:left; padding:6px 8px; font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-dim); border-bottom:1px solid var(--panel-2); white-space:nowrap; }
+  .tabla-repetidos td{ padding:6px 8px; border-bottom:1px solid var(--panel-2); white-space:nowrap; }
   footer{ text-align:center; padding:26px; color:var(--text-dim); font-size:11.5px; }
 </style>
 </head>
@@ -214,6 +218,10 @@
 const DATA = __DATA_JSON__;
 
 function titleCase(s) { return (s || '').split(' ').map(w => w ? w[0] + w.slice(1).toLowerCase() : w).join(' '); }
+function formatFechaLarga(iso) {
+  const [y, m, d] = iso.split('-');
+  return d + '/' + m + '/' + y;
+}
 
 document.getElementById('footerText').innerHTML =
   'Calidad: ' + DATA.periodoCalidad + ' (mes completo) · Derivaciones/RGU: ' + DATA.periodoMatriz + ' (avance del mes) · Generado ' + DATA.generadoEl;
@@ -311,6 +319,20 @@ function bloqueCalidad(datos) {
     html += causas.slice(0, 3).map((c) =>
       '<div class="fila-dato"><span class="k">Causa: ' + c.causa + '</span><span class="v">' + c.cnt + '</span></div>'
     ).join('');
+  }
+  if (datos.causas && datos.causas.length > 0) {
+    const eventosOrdenados = [...datos.causas].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    html += '<p style="margin:14px 0 6px; font-size:12px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em;">Tus órdenes repetidas</p>';
+    html += '<div class="tabla-repetidos-wrap"><table class="tabla-repetidos"><thead><tr>'
+      + '<th>Fecha</th><th>Días hasta el repetido</th><th>Causa</th><th>N° Orden</th>'
+      + '</tr></thead><tbody>'
+      + eventosOrdenados.map((e) =>
+          '<tr><td>' + (e.fecha ? formatFechaLarga(e.fecha) : '—') + '</td>'
+          + '<td>' + (e.dias != null ? e.dias : '—') + '</td>'
+          + '<td>' + e.causa + '</td>'
+          + '<td>' + (e.ordenTrabajo || '—') + '</td></tr>'
+        ).join('')
+      + '</tbody></table></div>';
   }
   html += '</div>';
   return html;

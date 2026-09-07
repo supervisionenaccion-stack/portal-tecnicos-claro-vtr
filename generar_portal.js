@@ -324,6 +324,8 @@ function calcularCalidad(baseRows, repRows, supervisores) {
         causa: match.CodigoCierreRepetido || "Sin causa registrada",
         dias,
         tipoActividad: row.TipoActividadPrimerServicio || null,
+        ordenTrabajo: row["Orden de Trabajo"] || null,
+        fecha: row.Fecha_Cierre ? toSqlDate(new Date(row.Fecha_Cierre)) : null,
       });
     }
 
