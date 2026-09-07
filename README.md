@@ -15,6 +15,7 @@ portal-tecnicos/
 ├── Actualizar_Dashboard.bat            ← DOBLE CLIC: corre generar_portal.js
 ├── Credenciales_Tecnicos_NO_SUBIR.xlsx ← ID de cada tecnico (SOLO local, no se sube)
 ├── Tecnicos_Baja_NO_SUBIR.json         ← RUT de tecnicos de baja a excluir (SOLO local, no se sube)
+├── Supervisor_Temporal.json             ← reasignaciones temporales de supervisor (se sube, sin RUT)
 ├── .env.local                          ← credenciales de la base de datos (SOLO local, no se sube)
 └── .gitignore
 ```
@@ -69,6 +70,32 @@ credenciales: contiene RUT completo, por eso nunca se sube a git). Formato:
 
 `generar_portal.js` los excluye por RUT (normalizado) antes de generar
 `index.html`, `supervisor.html` y el Excel de credenciales, en cada corrida.
+
+## Reasignacion temporal de supervisor
+
+Cuando un supervisor esta temporalmente en otras actividades y otro cubre a
+su equipo mientras tanto (ej. septiembre 2026: Rolando Montoya en otras
+actividades, Danilo Ojeda a cargo de los tecnicos de RM), se maneja en
+`Supervisor_Temporal.json` — a diferencia del archivo de bajas, este SI se
+sube a git porque solo tiene nombres de supervisor, sin RUT. Formato:
+
+```json
+[
+  {
+    "activo": true,
+    "supervisorOriginal": "NOMBRE COMPLETO DEL SUPERVISOR REEMPLAZADO",
+    "supervisorTemporal": "NOMBRE COMPLETO DEL SUPERVISOR QUE CUBRE",
+    "motivo": "Por que existe esta reasignacion (para referencia humana)",
+    "desde": "2026-09-01"
+  }
+]
+```
+
+`generar_portal.js` reemplaza el campo SUPERVISOR de cada tecnico afectado
+apenas se leen los datos de `SUPERVISORES_VTR`, asi que el cambio se refleja
+en todo el portal (filtros, rankings, evolutivos) sin tocar nada mas. Para
+volver a la normalidad cuando el supervisor original regrese, basta con
+poner `"activo": false` (o borrar la entrada) — no hace falta tocar codigo.
 
 ## Privacidad
 

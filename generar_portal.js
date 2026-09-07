@@ -116,13 +116,35 @@ async function monthToDateRangeMatriz(pool, now = new Date()) {
 // pesadas (window functions, self-joins) sobre tablas de mas de un millon
 // de filas.
 
+// Reasignaciones temporales de supervisor (ej. un supervisor en otras
+// actividades por un tiempo y otro cubre a su equipo mientras tanto). Vive
+// en Supervisor_Temporal.json, sin RUT ni datos sensibles, para que sea
+// facil de prender/apagar cuando la situacion vuelva a la normalidad: solo
+// hay que poner "activo": false (o borrar la entrada), sin tocar codigo.
+function loadSupervisorOverrides() {
+  const overridesPath = path.join(__dirname, "Supervisor_Temporal.json");
+  if (!fs.existsSync(overridesPath)) return [];
+  const lista = JSON.parse(fs.readFileSync(overridesPath, "utf-8"));
+  return lista.filter((o) => o.activo);
+}
+
 async function fetchSupervisores(pool) {
   const result = await pool.request().query(`
     SELECT RUT_TECNICO, TECNICO, AGENCIA, SUPERVISOR FROM SUPERVISORES_VTR
   `);
+  const overrides = loadSupervisorOverrides();
   const map = new Map();
+  let reasignados = 0;
   for (const row of result.recordset) {
+    const override = overrides.find((o) => row.SUPERVISOR === o.supervisorOriginal);
+    if (override) {
+      row.SUPERVISOR = override.supervisorTemporal;
+      reasignados++;
+    }
     map.set(normalizeRut(row.RUT_TECNICO), row);
+  }
+  if (reasignados > 0) {
+    console.log(`==> Supervisor temporal aplicado: ${reasignados} tecnico(s) reasignado(s).`);
   }
   return map;
 }
