@@ -60,6 +60,11 @@
   th.clicable{ cursor:pointer; }
   th.clicable:hover{ color:var(--cobra-blue); }
   th.clicable .info-ico{ font-size:10px; margin-left:3px; opacity:.7; }
+  thead .ordenable{ cursor:pointer; user-select:none; }
+  thead .ordenable:hover{ color:var(--cobra-blue); }
+  thead .info-ico{ font-size:10px; margin-left:4px; opacity:.7; cursor:pointer; }
+  thead .info-ico:hover{ opacity:1; color:var(--cobra-blue); }
+  .sort-arrow{ display:inline-block; margin-left:3px; font-size:9px; width:8px; }
 
   .modal-fondo{ display:none; position:fixed; inset:0; background:rgba(20,30,45,.45); z-index:50; align-items:center; justify-content:center; padding:20px; }
   .modal-fondo.abierto{ display:flex; }
@@ -228,12 +233,21 @@
     <table>
       <thead>
         <tr>
-          <th>Técnico</th>
-          <th>Agencia</th>
-          <th>Supervisor</th>
-          <th class="num clicable" onclick="mostrarInfo('calidad')">Calidad (repetidos)<span class="info-ico">ⓘ</span></th>
-          <th class="num clicable" onclick="mostrarInfo('derivaciones')">Derivaciones<span class="info-ico">ⓘ</span></th>
-          <th class="num clicable" onclick="mostrarInfo('rgu')">Producción RGU<span class="info-ico">ⓘ</span></th>
+          <th class="ordenable" onclick="ordenarPor('nombre')">Técnico<span class="sort-arrow" id="flecha-nombre"></span></th>
+          <th class="ordenable" onclick="ordenarPor('agencia')">Agencia<span class="sort-arrow" id="flecha-agencia"></span></th>
+          <th class="ordenable" onclick="ordenarPor('supervisor')">Supervisor<span class="sort-arrow" id="flecha-supervisor"></span></th>
+          <th class="num">
+            <span class="ordenable" onclick="ordenarPor('calidad')">Calidad (repetidos)<span class="sort-arrow" id="flecha-calidad"></span></span>
+            <span class="info-ico clicable" onclick="mostrarInfo('calidad')">ⓘ</span>
+          </th>
+          <th class="num">
+            <span class="ordenable" onclick="ordenarPor('derivaciones')">Derivaciones<span class="sort-arrow" id="flecha-derivaciones"></span></span>
+            <span class="info-ico clicable" onclick="mostrarInfo('derivaciones')">ⓘ</span>
+          </th>
+          <th class="num">
+            <span class="ordenable" onclick="ordenarPor('rgu')">Producción RGU<span class="sort-arrow" id="flecha-rgu"></span></span>
+            <span class="info-ico clicable" onclick="mostrarInfo('rgu')">ⓘ</span>
+          </th>
         </tr>
       </thead>
       <tbody id="tablaBody"></tbody>
@@ -430,6 +444,53 @@ function renderRanking(lista) {
     + construirTarjeta('Producción RGU', (t) => (t.rgu ? t.rgu.pctCumplimiento : null), false);
 }
 
+// Orden actual de la tabla principal. Por defecto alfabetico por tecnico;
+// un clic en un encabezado ordena por esa columna, otro clic invierte el
+// sentido. Los "Sin datos" siempre quedan al final, sin importar el
+// sentido, para no mezclar el vacio con valores reales.
+const ordenTabla = { columna: 'nombre', sentido: 'asc' };
+
+function valorOrdenTabla(t, columna) {
+  switch (columna) {
+    case 'nombre': return t.nombre || '';
+    case 'agencia': return t.agencia || '';
+    case 'supervisor': return t.supervisor || '';
+    case 'calidad': return t.calidad ? t.calidad.pctRepetidos : null;
+    case 'derivaciones': return t.derivaciones ? t.derivaciones.pctDerivaciones : null;
+    case 'rgu': return t.rgu ? t.rgu.pctCumplimiento : null;
+    default: return null;
+  }
+}
+
+function compararOrdenTabla(a, b) {
+  const va = valorOrdenTabla(a, ordenTabla.columna);
+  const vb = valorOrdenTabla(b, ordenTabla.columna);
+  if (va == null && vb == null) return 0;
+  if (va == null) return 1;
+  if (vb == null) return -1;
+  const cmp = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+  return ordenTabla.sentido === 'asc' ? cmp : -cmp;
+}
+
+function ordenarPor(columna) {
+  if (ordenTabla.columna === columna) {
+    ordenTabla.sentido = ordenTabla.sentido === 'asc' ? 'desc' : 'asc';
+  } else {
+    ordenTabla.columna = columna;
+    ordenTabla.sentido = 'asc';
+  }
+  renderTabla();
+}
+window.ordenarPor = ordenarPor;
+
+function actualizarFlechasOrden() {
+  ['nombre', 'agencia', 'supervisor', 'calidad', 'derivaciones', 'rgu'].forEach((columna) => {
+    const el = document.getElementById('flecha-' + columna);
+    if (!el) return;
+    el.textContent = columna !== ordenTabla.columna ? '' : (ordenTabla.sentido === 'asc' ? '▲' : '▼');
+  });
+}
+
 function renderTabla() {
   const supervisor = document.getElementById('filtroSupervisor').value;
 
@@ -452,9 +513,10 @@ function renderTabla() {
     return;
   }
   sinResultados.style.display = 'none';
+  actualizarFlechasOrden();
 
   tbody.innerHTML = filtrados
-    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+    .sort(compararOrdenTabla)
     .map((t) => {
       const calPct = t.calidad ? t.calidad.pctRepetidos : null;
       const calClase = t.calidad ? estadoCalidad(calPct, t.calidad.metaCalidad) : 'na';
