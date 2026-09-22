@@ -1,5 +1,5 @@
 # Actualizacion automatica diaria del portal (la corre el Programador de
-# tareas de Windows, tarea "Portal Tecnicos - Actualizacion diaria", 10:00).
+# tareas de Windows, tarea "Portal Tecnicos - Actualizacion diaria", 08:00).
 # Mismo flujo que Actualizar_Dashboard.bat, pero sin pausas y con controles:
 #   1. generar_portal.js  -> consulta la BD y genera los HTML (todo local)
 #   2. validar_portal.js  -> si algo no cuadra, NO se publica nada

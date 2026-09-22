@@ -40,6 +40,24 @@ distinto:
 
 Ambas fechas quedan indicadas al pie de la página.
 
+### Actualizacion automatica (todos los dias a las 8:00)
+
+La tarea de Windows **"Portal Tecnicos - Actualizacion diaria"** corre
+`Actualizar_Automatico.ps1` a las 8:00. Si el PC estaba apagado a esa
+hora, corre apenas se encienda y haya sesion iniciada. El script:
+
+1. Genera los HTML con `generar_portal.js` (todo se procesa en este equipo).
+2. Los revisa con `validar_portal.js`: fecha de hoy, periodos correctos,
+   misma cantidad de tecnicos en ambas paginas, sin RUT completos, y que no
+   haya caido mas de un 20% la cantidad de tecnicos respecto de lo
+   publicado. Si algo falla, **no publica nada**.
+3. Sube solo `index.html` y `supervisor.html` a GitHub (reintenta).
+4. Espera a que el sitio publico muestre exactamente el archivo nuevo.
+5. Avisa con una notificacion de Windows: "Portal actualizado y publicado",
+   "Portal sin cambios" o "Portal NO actualizado" con el motivo.
+
+El detalle de cada corrida queda en `logsactualizacion_AAAA-MM-DD.log`.
+
 ## Repartir los accesos a los técnicos
 
 Cada corrida genera `Credenciales_Tecnicos_NO_SUBIR.xlsx` con el ID de
