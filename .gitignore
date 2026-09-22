@@ -13,3 +13,6 @@ Tecnicos_Baja_NO_SUBIR.json
 
 # misc
 .DS_Store
+
+# logs de la actualizacion automatica
+logs/

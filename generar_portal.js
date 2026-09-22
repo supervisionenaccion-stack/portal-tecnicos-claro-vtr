@@ -628,6 +628,13 @@ function usuarioFromNombre(nombreCompleto) {
   return `${capitalize(nombre)} ${capitalize(apellido)}`;
 }
 
+// JSON listo para incrustar dentro de <script>: se escapa "<" para que un
+// dato con "</script>" no corte la pagina. Se inserta con replace(..., () => ...)
+// para que un "$&" o "$'" dentro de los datos no se interprete como patron.
+function jsonParaScript(obj) {
+  return JSON.stringify(obj).replace(/</g, "\\u003c");
+}
+
 // ---------- 4. Main ----------
 async function main() {
   console.log("==> Conectando a la base de datos...");
@@ -812,7 +819,7 @@ async function main() {
     periodoMatriz: rangoMatriz.label,
     tecnicos: dataParaHtml,
   };
-  const html = template.replace("__DATA_JSON__", JSON.stringify(dataCompleta));
+  const html = template.replace("__DATA_JSON__", () => jsonParaScript(dataCompleta));
 
   const outPath = path.join(__dirname, "index.html");
   fs.writeFileSync(outPath, html, "utf-8");
@@ -838,7 +845,7 @@ async function main() {
     evolutivoMensual,
     evolutivoMensualRgu,
   };
-  const htmlSup = templateSup.replace("__DATA_SUPERVISOR_JSON__", JSON.stringify(dataSupervisor));
+  const htmlSup = templateSup.replace("__DATA_SUPERVISOR_JSON__", () => jsonParaScript(dataSupervisor));
   const outSupPath = path.join(__dirname, "supervisor.html");
   fs.writeFileSync(outSupPath, htmlSup, "utf-8");
   console.log(`==> Generado: ${outSupPath}`);
